@@ -685,7 +685,7 @@ function closeModal(id) {
 let mapSDKLoaded = false, mapDrvFilter = null;
 function openMapView(drvFilter) {
   if (!KAKAO_MAP_KEY) {
-    alert('카카오 지도 API 키가 필요합니다.\n\n① developers.kakao.com 접속\n② 내 애플리케이션 > 앱 만들기\n③ 앱 키 > JavaScript 키 복사\n④ index.html 상단 KAKAO_MAP_KEY 에 붙여넣기');
+    alert('카카오 지도 API 키가 필요합니다.');
     return;
   }
   mapDrvFilter = drvFilter || null;
@@ -693,15 +693,33 @@ function openMapView(drvFilter) {
   document.querySelector('#map-modal .modal-hdr span').textContent = title;
   openModal('map-modal');
   $('kakao-map').innerHTML = '<div style="padding:40px;color:#888;font-size:15px">지도 로딩 중...</div>';
-  if (!mapSDKLoaded) {
-    const s = document.createElement('script');
-    s.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${KAKAO_MAP_KEY}&libraries=services&autoload=false`;
-    s.onload = () => { mapSDKLoaded = true; kakao.maps.load(initMap); };
-    s.onerror = () => { $('kakao-map').innerHTML = '<div style="padding:40px;color:#f87171;font-size:14px">지도 로드 실패. API 키를 확인하세요.</div>'; };
-    document.head.appendChild(s);
-  } else {
+
+  // 이미 kakao 객체가 있으면 바로 사용
+  if (typeof kakao !== 'undefined' && kakao.maps) {
+    mapSDKLoaded = true;
     kakao.maps.load(initMap);
+    return;
   }
+
+  // 이전에 실패한 script 제거 후 재시도
+  document.querySelectorAll('script[data-kakao-map]').forEach(el => el.remove());
+  mapSDKLoaded = false;
+
+  const s = document.createElement('script');
+  s.setAttribute('data-kakao-map', '1');
+  s.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${KAKAO_MAP_KEY}&libraries=services&autoload=false`;
+  s.onload = () => { mapSDKLoaded = true; kakao.maps.load(initMap); };
+  s.onerror = () => {
+    $('kakao-map').innerHTML = `<div style="padding:32px 24px;color:#f87171;font-size:14px;line-height:2">
+      ⚠️ 지도 로드 실패<br>
+      <span style="color:#888;font-size:13px">
+        1. <a href="https://developers.kakao.com" target="_blank" style="color:#60a5fa">developers.kakao.com</a> 에서 도메인 저장 여부 확인<br>
+        2. 페이지 강력 새로고침 (Cmd+Shift+R / Ctrl+Shift+R)<br>
+        3. 저장 후 1~2분 뒤 재시도
+      </span>
+    </div>`;
+  };
+  document.head.appendChild(s);
 }
 
 function initMap() {

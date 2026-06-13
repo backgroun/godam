@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>🚚 배송플랜 자동화</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Apple SD Gothic Neo','맑은 고딕',sans-serif;background:#f0f2f5;min-height:100vh;color:#1a1a1a;line-height:1.4}
+.wrap{max-width:1120px;margin:0 auto;padding:28px 20px 60px}
+.hdr{text-align:center;margin-bottom:28px}
+.hdr h1{font-size:26px;font-weight:800}
+.hdr .sub{font-size:13px;color:#666;margin-top:6px}
+.card{background:#fff;border-radius:14px;padding:20px 24px;border:1px solid #e5e7eb;margin-bottom:14px;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+/* UPLOAD */
+.uprow{display:grid;grid-template-columns:1fr 56px 1fr;align-items:center}
+.up-arr{text-align:center;font-size:26px;color:#c0c7d0}
+.dz{border:2px dashed #d1d5db;border-radius:12px;padding:22px 14px;text-align:center;cursor:pointer;transition:.2s;background:#fafbfc}
+.dz:hover,.dz.over{border-color:#4472C4;background:#eff4ff}
+.dz.done{border-color:#16a34a;border-style:solid;background:#f0fdf4}
+.dz.cached{border-color:#16a34a;border-style:solid;background:#f0fdf4;cursor:default}
+.dz.cached:hover{border-color:#16a34a;background:#f0fdf4}
+.dz-ico{font-size:36px;margin-bottom:8px;display:block}
+.dz-lbl{font-size:14px;font-weight:700;margin-bottom:3px}
+.dz-hint{font-size:11px;color:#9ca3af;margin-bottom:12px}
+.dz-pick{display:inline-block;padding:6px 18px;background:#4472C4;color:#fff;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer}
+.dz.done .dz-pick{background:#16a34a}
+.dz-file{margin-top:8px;font-size:11px;font-weight:600;color:#16a34a;line-height:1.5}
+.dz-cached-info{font-size:13px;font-weight:700;color:#15803d;margin-bottom:4px}
+.dz-cached-sub{font-size:11px;color:#6b7280;margin-bottom:12px;line-height:1.6}
+.dz-update-btn{padding:5px 14px;background:#fff;color:#4472C4;border:1px solid #4472C4;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;transition:.15s}
+.dz-update-btn:hover{background:#eff4ff}
+input[type=file]{display:none}
+/* SETTINGS */
+.stg-hdr{font-size:13px;font-weight:600;color:#4472C4;cursor:pointer;user-select:none;display:flex;align-items:center;gap:6px}
+.stg-body{margin-top:14px;display:none}
+.stg-body.open{display:block}
+.stg-note{font-size:12px;color:#9ca3af;margin-bottom:8px}
+.dtbl{width:100%;border-collapse:collapse;font-size:13px}
+.dtbl th{background:#f3f4f6;padding:8px 10px;font-weight:600;border:1px solid #e5e7eb;text-align:left}
+.dtbl td{padding:5px 7px;border:1px solid #e5e7eb}
+.dtbl input{width:100%;padding:4px 7px;border:1px solid #d1d5db;border-radius:4px;font:inherit;font-size:13px}
+.add-btn{margin-top:8px;padding:5px 13px;background:#4472C4;color:#fff;border:none;border-radius:5px;cursor:pointer;font-size:12px;font-weight:600}
+.zones-ref{font-size:11px;color:#9ca3af;margin-top:8px;line-height:1.7}
+/* GENERATE */
+.gen-btn{display:block;width:100%;padding:14px;border:none;border-radius:10px;font-size:16px;font-weight:700;cursor:pointer;transition:.15s;color:#fff;margin-bottom:18px}
+.gen-btn:not(:disabled){background:#4472C4}
+.gen-btn:not(:disabled):hover{background:#3461b0;transform:translateY(-1px);box-shadow:0 4px 14px rgba(68,114,196,.3)}
+.gen-btn:disabled{background:#9ca3af;cursor:not-allowed}
+/* RESULTS */
+.sum-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:14px}
+.sc{padding:13px 16px;border-radius:12px;color:#fff}
+.sc .drv{font-size:12px;font-weight:600;opacity:.85;margin-bottom:4px}
+.sc .big{font-size:32px;font-weight:900;line-height:1}
+.sc .lbl{font-size:11px;opacity:.75;margin-top:2px}
+.sc .zns{font-size:10px;opacity:.8;margin-top:7px;line-height:1.6}
+.warn{background:#fffbeb;border:1px solid #f59e0b;border-radius:10px;padding:11px 15px;font-size:13px;color:#92400e;margin-bottom:12px}
+.warn b{display:block;margin-bottom:3px}
+/* TABS */
+.tabs{display:flex;gap:3px;flex-wrap:wrap}
+.tab-btn{padding:8px 16px;border:1px solid #e5e7eb;border-bottom:none;border-radius:8px 8px 0 0;cursor:pointer;font-size:13px;font-weight:600;background:#f3f4f6;color:#6b7280;transition:.1s}
+.tab-btn.active{background:#fff;color:#4472C4;border-color:#4472C4;margin-bottom:-1px;z-index:1;position:relative}
+.tab-panel{background:#fff;border:1px solid #e5e7eb;border-radius:0 8px 8px 8px;padding:14px;margin-bottom:14px;display:none;overflow-x:auto}
+.tab-panel.active{display:block}
+/* TABLE */
+.ptbl{width:100%;border-collapse:collapse;font-size:13px}
+.ptbl th{background:#374151;color:#fff;padding:8px 10px;font-weight:600;white-space:nowrap;text-align:left}
+.ptbl td{padding:7px 9px;border-bottom:1px solid #f3f4f6;vertical-align:top}
+.ptbl tr:last-child td{border-bottom:none}
+.ptbl tr:hover td{background:#f9fafb}
+.zchip{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.no-addr{color:#dc2626;font-style:italic;font-size:12px}
+.addr{font-size:12px;color:#6b7280}
+.note{font-size:12px;color:#6b7280}
+.cust{font-weight:700}
+/* ACTIONS */
+.actions{display:flex;gap:10px;justify-content:flex-end;margin-top:4px}
+.abtn{padding:10px 22px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;border:none;transition:.15s}
+.print-btn{background:#f3f4f6;color:#374151;border:1px solid #e5e7eb}
+.print-btn:hover{background:#e5e7eb}
+.dl-btn{background:#16a34a;color:#fff}
+.dl-btn:hover{background:#15803d}
+/* driver bg colors */
+.c1{background:#ea580c}.c2{background:#16a34a}.c3{background:#1d4ed8}.c4{background:#7c3aed}.c5{background:#be185d}.cmiss{background:#b91c1c}
+/* PRINT */
+@media print{
+  body{background:#fff}
+  .upload-card,.settings-card,.gen-btn,.actions,.tabs,.hdr .sub{display:none!important}
+  .tab-panel{display:block!important;page-break-before:always;border:none;padding:0}
+  .tab-panel:first-of-type{page-break-before:avoid}
+  .ptbl th{-webkit-print-color-adjust:exact;print-color-adjust:exact;background:#374151!important;color:#fff!important}
+  .sum-grid{display:grid!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .sc{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="hdr">
+  <h1>🚚 배송플랜 자동화</h1>
+  <p class="sub" id="sub-msg">거래처 마스터 + 발주 파일 업로드 → 기사별 배송플랜 자동 생성</p>
+</div>
+
+<!-- UPLOAD -->
+<div class="card upload-card">
+  <div class="uprow">
+    <div class="dz" id="dz-m">
+      <!-- 업로드 상태 -->
+      <div id="m-upload" onclick="document.getElementById('f-m').click()">
+        <span class="dz-ico">🗂</span>
+        <div class="dz-lbl">① 거래처 마스터 파일</div>
+        <div class="dz-hint">upload_고담_정제.xlsx — 변경시에만 업로드</div>
+        <div class="dz-pick">파일 선택</div>
+        <div class="dz-file" id="fn-m"></div>
+      </div>
+      <!-- 저장됨 상태 (localStorage) -->
+      <div id="m-cached" style="display:none">
+        <span class="dz-ico">✅</span>
+        <div class="dz-cached-info" id="m-cached-cnt"></div>
+        <div class="dz-cached-sub" id="m-cached-sub"></div>
+        <button class="dz-update-btn" onclick="event.stopPropagation();openMasterPicker()">다른 파일로 업데이트</button>
+      </div>
+    </div>
+    <input type="file" id="f-m" accept=".xlsx,.xls">
+    <div class="up-arr">＋</div>
+    <div class="dz" id="dz-o" onclick="document.getElementById('f-o').click()">
+      <span class="dz-ico">📋</span>
+      <div class="dz-lbl">② 오늘 발주 파일</div>
+      <div class="dz-hint">meatpath_진행주문_날짜.xlsx — 매일 교체</div>
+      <div class="dz-pick">파일 선택</div>
+      <div class="dz-file" id="fn-o"></div>
+    </div>
+    <input type="file" id="f-o" accept=".xlsx,.xls">
+  </div>
+</div>
+
+<!-- SETTINGS -->
+<div class="card settings-card">
+  <div class="stg-hdr" onclick="toggleStg()">
+    <span>⚙️</span> 기사 배정 설정 보기/편집 <span id="stg-arrow">▼</span>
+  </div>
+  <div class="stg-body" id="stg-body">
+    <p class="stg-note">기사 이름과 담당 구역을 수정하세요. 구역명은 아래 목록에서 그대로 입력하세요.</p>
+    <table class="dtbl"><thead><tr>
+      <th style="width:130px">기사 이름</th>
+      <th>담당 구역 (쉼표 구분)</th>
+      <th style="width:46px;text-align:center">삭제</th>
+    </tr></thead>
+    <tbody id="drv-tbody"></tbody></table>
+    <button class="add-btn" onclick="addRow()">+ 기사 추가</button>
+    <p class="zones-ref"><b>사용 가능한 구역명:</b> 강남권, 강북권, 서울중부권, 서울서부권, 경기동북권, 경기동부권, 경기남부권, 경기서부권, 인천권, 원거리</p>
+  </div>
+</div>
+
+<!-- GENERATE -->
+<button class="gen-btn" id="gen-btn" disabled onclick="generate()">🗺 배송플랜 생성</button>
+
+<!-- RESULTS -->
+<div id="results" style="display:none">
+  <div class="sum-grid" id="sum-grid"></div>
+  <div class="warn" id="warn" style="display:none">
+    <b>⚠️ 주소 없는 거래처 (아래 탭에서 확인)</b>
+    <span id="warn-txt"></span>
+  </div>
+  <div class="tabs" id="tabs"></div>
+  <div id="tab-panels"></div>
+  <div class="actions">
+    <button class="abtn print-btn" onclick="window.print()">🖨 인쇄</button>
+    <button class="abtn dl-btn" onclick="dlExcel()">📥 Excel 다운로드</button>
+  </div>
+</div>
+
+</div>
+<script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+
+const ZONES = {
+  '강남권':    ['강남구','서초구','송파구','강동구'],
+  '강북권':    ['노원구','은평구','동대문구','성북구','중계'],
+  '서울중부권':['마포구','영등포구','금천구','구로구','동작구','중구','용산구'],
+  '서울서부권':['강서구','양천구'],
+  '경기동북권':['양주시','의정부시','동두천시','연천군','포천시'],
+  '경기동부권':['구리시','남양주시','가평군'],
+  '경기남부권':['성남시','분당구','용인시','화성시','안성시','평택시','수원시','오산시'],
+  '경기서부권':['김포시','파주시','시흥시','부천시','광명시'],
+  '인천권':   ['인천'],
+  '원거리':   ['구미','부산','울산','전주','정읍','광주','대구','대전'],
+};
+
+const ZONE_STYLE = {
+  '강남권':   'background:#fef9c3;color:#854d0e',
+  '강북권':   'background:#dcfce7;color:#14532d',
+  '서울중부권':'background:#dbeafe;color:#1e3a8a',
+  '서울서부권':'background:#f3e8ff;color:#581c87',
+  '경기동북권':'background:#ffedd5;color:#7c2d12',
+  '경기동부권':'background:#fefce8;color:#713f12',
+  '경기남부권':'background:#ccfbf1;color:#134e4a',
+  '경기서부권':'background:#fce7f3;color:#831843',
+  '인천권':   'background:#f1f5f9;color:#475569',
+  '원거리':   'background:#e2e8f0;color:#475569',
+  '기타':     'background:#f8fafc;color:#64748b',
+  '주소없음': 'background:#fee2e2;color:#991b1b',
+};
+
+const DRV_CLR = ['c1','c2','c3','c4','c5','c5'];
+
+const DEFAULTS = [
+  {name:'기사1', zones:'강남권, 서울중부권'},
+  {name:'기사2', zones:'강북권, 서울서부권, 경기동북권'},
+  {name:'기사3', zones:'경기동부권, 경기남부권'},
+  {name:'기사4', zones:'경기서부권, 인천권, 원거리'},
+];
+
+let masterLookup = null, orders = null, plan = null, dlDate = '';
+
+const LS_DATA = 'bp_master_v1';
+const LS_META = 'bp_master_meta_v1';
+
+function saveMaster(lookup, filename) {
+  try {
+    localStorage.setItem(LS_DATA, JSON.stringify(lookup));
+    localStorage.setItem(LS_META, JSON.stringify({
+      filename,
+      count: Object.keys(lookup).length,
+      date: new Date().toLocaleDateString('ko-KR')
+    }));
+  } catch(e) { /* 저장 공간 부족 시 무시 */ }
+}
+
+function loadMasterFromStorage() {
+  try {
+    const data = localStorage.getItem(LS_DATA);
+    const meta = localStorage.getItem(LS_META);
+    if (data && meta) return { lookup: JSON.parse(data), meta: JSON.parse(meta) };
+  } catch(e) {}
+  return null;
+}
+
+function showCachedMaster(meta) {
+  $('dz-m').classList.add('cached');
+  $('m-upload').style.display = 'none';
+  $('m-cached').style.display = 'block';
+  $('m-cached-cnt').textContent = `거래처 마스터 저장됨 (${meta.count.toLocaleString()}개)`;
+  $('m-cached-sub').innerHTML = `${h(meta.filename)}<br>저장일: ${h(meta.date)}`;
+}
+
+function showUploadMaster() {
+  $('dz-m').classList.remove('cached','done');
+  $('m-cached').style.display = 'none';
+  $('m-upload').style.display = 'block';
+  $('fn-m').innerHTML = '';
+}
+
+function openMasterPicker() {
+  document.getElementById('f-m').click();
+}
+
+// init
+DEFAULTS.forEach(d => addRow(d.name, d.zones));
+setupDnD();
+window.addEventListener('load', () => {
+  if (typeof XLSX === 'undefined') {
+    $('sub-msg').innerHTML = '⚠️ 라이브러리 로딩 실패 — 인터넷 연결 확인 후 새로고침하세요';
+    return;
+  }
+  // 저장된 마스터 데이터 복원
+  const saved = loadMasterFromStorage();
+  if (saved) {
+    masterLookup = saved.lookup;
+    showCachedMaster(saved.meta);
+    $('gen-btn').disabled = !orders; // 발주만 있으면 바로 활성화
+  }
+});
+
+function h(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function toggleStg(){
+  const b=$('stg-body'), a=$('stg-arrow');
+  b.classList.toggle('open');
+  a.textContent = b.classList.contains('open') ? '▲' : '▼';
+}
+
+function addRow(name='', zones=''){
+  const tr = document.createElement('tr');
+  tr.innerHTML = `<td><input type="text" value="${h(name)}" placeholder="기사 이름"></td>
+    <td><input type="text" value="${h(zones)}" placeholder="강남권, 서울중부권, ..."></td>
+    <td style="text-align:center"><span style="cursor:pointer;color:#ef4444;font-size:17px" onclick="this.closest('tr').remove()">×</span></td>`;
+  $('drv-tbody').appendChild(tr);
+}
+
+function getDriverCfg(){
+  return Array.from($('drv-tbody').rows).map(tr => {
+    const [n,z] = tr.querySelectorAll('input');
+    return { name: n.value.trim(), zones: z.value.split(',').map(s=>s.trim()).filter(Boolean) };
+  }).filter(d => d.name);
+}
+
+function setupDnD(){
+  [['dz-m','f-m','master'],['dz-o','f-o','order']].forEach(([dzId,inId,type]) => {
+    const dz=$(dzId);
+    dz.addEventListener('dragover', e=>{e.preventDefault();dz.classList.add('over')});
+    dz.addEventListener('dragleave', ()=>dz.classList.remove('over'));
+    dz.addEventListener('drop', e=>{e.preventDefault();dz.classList.remove('over');handleFile(e.dataTransfer.files[0],type)});
+    $(inId).addEventListener('change', e=>handleFile(e.target.files[0],type));
+  });
+}
+
+function handleFile(file, type){
+  if (!file) return;
+  if (typeof XLSX === 'undefined') { alert('라이브러리 로딩 중입니다. 잠시 후 다시 시도하세요.'); return; }
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb = XLSX.read(new Uint8Array(e.target.result), {type:'array', raw:false});
+      if (type === 'master'){
+        masterLookup = parseMaster(wb);
+        saveMaster(masterLookup, file.name);
+        showCachedMaster({ filename: file.name, count: Object.keys(masterLookup).length, date: new Date().toLocaleDateString('ko-KR') });
+      } else {
+        const r = parseOrders(wb);
+        orders = r.orders; dlDate = r.date;
+        markDone('dz-o','fn-o', file.name, r.orders.length + '개 주문 로드됨');
+      }
+      $('gen-btn').disabled = !(masterLookup && orders);
+    } catch(err){ alert('파일 읽기 오류: ' + err.message); showUploadMaster(); }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function markDone(dzId, fnId, name, detail){
+  $(dzId).classList.add('done');
+  $(fnId).innerHTML = `✓ ${h(name)}<br><span style="font-weight:400;color:#6b7280;font-size:10px">${h(detail)}</span>`;
+}
+
+function parseMaster(wb){
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(ws, {defval:null});
+  const lkp = {};
+  rows.forEach(row => {
+    const name = flexCol(row, ['거래처명']);
+    const addr = flexCol(row, ['정제주소(구글맵용)','정제주소','주소']);
+    if (name) lkp[String(name).trim()] = addr ? String(addr).trim() : null;
+  });
+  return lkp;
+}
+
+function flexCol(row, candidates){
+  for (const c of candidates){
+    if (row[c] != null) return row[c];
+    const k = Object.keys(row).find(k => k.replace(/\s+/g,'') === c.replace(/\s+/g,''));
+    if (k && row[k] != null) return row[k];
+  }
+  return null;
+}
+
+function parseOrders(wb){
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(ws, {defval:null, raw:false});
+  const orders = rows.filter(r => {
+    const n = r['거래처명'];
+    return n && String(n).trim() && !['nan','null','undefined'].includes(String(n).trim().toLowerCase());
+  });
+  let date = new Date().toISOString().slice(0,10).replace(/-/g,'');
+  if (orders.length){
+    const dv = orders[0]['납기일'];
+    if (dv){ const ds=String(dv).slice(0,10); if(/^\d{4}-\d{2}-\d{2}/.test(ds)) date=ds.replace(/-/g,''); }
+  }
+  return {orders, date};
+}
+
+function getZone(addr){
+  if (!addr) return '주소없음';
+  for (const [z,kws] of Object.entries(ZONES))
+    if (kws.some(kw => addr.includes(kw))) return z;
+  return '기타';
+}
+
+function getDriver(zone, cfg){
+  for (const d of cfg) if (d.zones.includes(zone)) return d.name;
+  return '미배정';
+}
+
+function generate(){
+  const cfg = getDriverCfg();
+  plan = orders.map(o => {
+    const name = String(o['거래처명']).trim();
+    const addr = masterLookup[name] || null;
+    const zone = getZone(addr);
+    return {
+      담당기사: getDriver(zone, cfg), 구역: zone,
+      거래처명: name, 배송주소: addr||'',
+      품목명: o['품목명']||'', 수량: o['수량']||'',
+      구분: o['구분']||'', 비고1: o['비고1']||'', 비고2: o['비고2']||'',
+      납기일: o['납기일'] ? String(o['납기일']).slice(0,10) : '',
+    };
+  });
+  renderResults(cfg);
+  $('results').style.display='block';
+  $('results').scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+function renderResults(cfg){
+  const sg=$('sum-grid'), tabs=$('tabs'), tp=$('tab-panels');
+  sg.innerHTML = tabs.innerHTML = tp.innerHTML = '';
+
+  const allDrvs = [...cfg.map(d=>d.name), '미배정'];
+
+  allDrvs.forEach((drv,i) => {
+    const sub = plan.filter(o=>o.담당기사===drv);
+    if (!sub.length) return;
+    const customers = new Set(sub.map(o=>o.거래처명)).size;
+    const qty = sub.reduce((s,o)=>s+(parseFloat(o.수량)||0),0);
+    const d = cfg.find(x=>x.name===drv);
+    const clr = drv==='미배정' ? 'cmiss' : (DRV_CLR[i]||'c1');
+    const div = document.createElement('div');
+    div.className = `sc ${clr}`;
+    div.innerHTML = `<div class="drv">${h(drv)}</div>
+      <div class="big">${customers}</div>
+      <div class="lbl">거래처 · ${qty.toFixed(0)}건</div>
+      ${d ? `<div class="zns">${d.zones.join(' · ')}</div>` : ''}`;
+    sg.appendChild(div);
+  });
+
+  const noAddr = plan.filter(o=>!o.배송주소);
+  if (noAddr.length){
+    const names = [...new Set(noAddr.map(o=>o.거래처명))];
+    $('warn-txt').textContent = `총 ${names.length}개: ${names.join(', ')}`;
+    $('warn').style.display='block';
+  } else { $('warn').style.display='none'; }
+
+  const drvList = allDrvs.filter(d=>plan.some(o=>o.담당기사===d));
+  drvList.forEach((drv,idx) => {
+    const sub = plan.filter(o=>o.담당기사===drv);
+    const cnt = new Set(sub.map(o=>o.거래처명)).size;
+    const sid = 'tab_' + drv.replace(/[^a-zA-Z0-9가-힣]/g,'_');
+
+    const btn = document.createElement('button');
+    btn.className = 'tab-btn' + (idx===0?' active':'');
+    btn.textContent = `${drv} (${cnt})`;
+    btn.onclick = () => {
+      document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+      btn.classList.add('active');
+      $(sid).classList.add('active');
+    };
+    tabs.appendChild(btn);
+
+    const panel = document.createElement('div');
+    panel.className = 'tab-panel' + (idx===0?' active':'');
+    panel.id = sid;
+
+    const sorted = [...sub].sort((a,b)=>a.구역.localeCompare(b.구역)||a.거래처명.localeCompare(b.거래처명));
+    panel.innerHTML = `<table class="ptbl"><thead><tr>
+      <th style="width:34px">#</th><th style="width:95px">구역</th>
+      <th style="width:155px">거래처명</th><th>배송주소</th>
+      <th>품목명</th><th style="width:50px">수량</th>
+      <th style="width:55px">구분</th><th>비고</th>
+    </tr></thead><tbody>
+    ${sorted.map((o,i)=>`<tr>
+      <td style="text-align:center;color:#9ca3af">${i+1}</td>
+      <td><span class="zchip" style="${ZONE_STYLE[o.구역]||ZONE_STYLE['기타']}">${h(o.구역)}</span></td>
+      <td class="cust">${h(o.거래처명)}</td>
+      <td class="addr">${o.배송주소 ? h(o.배송주소) : '<span class="no-addr">주소 없음</span>'}</td>
+      <td>${h(o.품목명)}</td>
+      <td style="text-align:center">${h(String(o.수량))}</td>
+      <td style="text-align:center">${h(String(o.구분))}</td>
+      <td class="note">${[o.비고1,o.비고2].filter(Boolean).map(h).join(' / ')}</td>
+    </tr>`).join('')}
+    </tbody></table>`;
+    tp.appendChild(panel);
+  });
+}
+
+function dlExcel(){
+  if (!plan) return;
+  const wb = XLSX.utils.book_new();
+  const cfg = getDriverCfg();
+  const allDrvs = [...cfg.map(d=>d.name),'미배정'];
+  const rows = [['#','담당기사','구역','거래처명','배송주소','품목명','수량','구분','비고1','비고2','납기일']];
+  let seq=1;
+  allDrvs.forEach(drv => {
+    const sub = plan.filter(o=>o.담당기사===drv);
+    if (!sub.length) return;
+    rows.push([`▶ ${drv}`,'','','','','','','','','','']);
+    [...sub].sort((a,b)=>a.구역.localeCompare(b.구역)||a.거래처명.localeCompare(b.거래처명))
+      .forEach(o=>rows.push([seq++,o.담당기사,o.구역,o.거래처명,o.배송주소,o.품목명,o.수량,o.구분,o.비고1,o.비고2,o.납기일]));
+    rows.push([]);
+  });
+  const ws1 = XLSX.utils.aoa_to_sheet(rows);
+  ws1['!cols']=[{wch:5},{wch:10},{wch:12},{wch:22},{wch:40},{wch:28},{wch:7},{wch:8},{wch:20},{wch:20},{wch:12}];
+  XLSX.utils.book_append_sheet(wb, ws1, '배송플랜');
+
+  const noAddr = plan.filter(o=>!o.배송주소);
+  if (noAddr.length){
+    const ws2 = XLSX.utils.json_to_sheet(noAddr.map(o=>({거래처명:o.거래처명,품목명:o.품목명,수량:o.수량,구분:o.구분,비고1:o.비고1})));
+    XLSX.utils.book_append_sheet(wb, ws2, '주소없음_확인필요');
+  }
+
+  const smap={};
+  plan.forEach(o=>{
+    const k=o.구역+'|'+o.담당기사;
+    if(!smap[k]) smap[k]={구역:o.구역,담당기사:o.담당기사,거래처:new Set(),총수량:0};
+    smap[k].거래처.add(o.거래처명);
+    smap[k].총수량 += parseFloat(o.수량)||0;
+  });
+  const sumRows = Object.values(smap).map(s=>({구역:s.구역,담당기사:s.담당기사,거래처수:s.거래처.size,총수량:s.총수량}))
+    .sort((a,b)=>a.구역.localeCompare(b.구역));
+  const ws3 = XLSX.utils.json_to_sheet(sumRows);
+  XLSX.utils.book_append_sheet(wb, ws3, '구역별요약');
+
+  XLSX.writeFile(wb, `배송플랜_${dlDate}.xlsx`);
+}
+</script>
+</body>
+</html>

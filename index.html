@@ -682,42 +682,39 @@ function closeModal(id) {
   document.body.style.overflow = '';
 }
 
-let mapSDKLoaded = false, mapDrvFilter = null;
+let mapDrvFilter = null, _leafletMap = null, _leafletReady = false;
+const LS_GEOCACHE = 'bp_geocache_v1';
+
+function loadGeoCache() {
+  try { return JSON.parse(localStorage.getItem(LS_GEOCACHE)) || {}; } catch(e) { return {}; }
+}
+function saveGeoCache(cache) {
+  try { localStorage.setItem(LS_GEOCACHE, JSON.stringify(cache)); } catch(e) {}
+}
+
 function openMapView(drvFilter) {
-  if (!KAKAO_MAP_KEY) {
-    alert('카카오 지도 API 키가 필요합니다.');
-    return;
-  }
   mapDrvFilter = drvFilter || null;
   const title = mapDrvFilter ? `🗺 ${mapDrvFilter} 배송지` : '🗺 배송지 지도';
   document.querySelector('#map-modal .modal-hdr span').textContent = title;
   openModal('map-modal');
-  $('kakao-map').innerHTML = '<div style="padding:40px;color:#888;font-size:15px">지도 로딩 중...</div>';
+  const container = $('kakao-map');
+  container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#888;font-size:15px">지도 로딩 중...</div>';
 
-  // 이미 kakao 객체가 있으면 바로 사용
-  if (typeof kakao !== 'undefined' && kakao.maps) {
-    mapSDKLoaded = true;
-    kakao.maps.load(initMap);
-    return;
+  if (_leafletReady) { initMap(); return; }
+
+  // Leaflet CSS
+  if (!document.querySelector('link[data-lf]')) {
+    const css = document.createElement('link');
+    css.rel = 'stylesheet'; css.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+    css.setAttribute('data-lf', '1');
+    document.head.appendChild(css);
   }
-
-  // 이전에 실패한 script 제거 후 재시도
-  document.querySelectorAll('script[data-kakao-map]').forEach(el => el.remove());
-  mapSDKLoaded = false;
-
+  // Leaflet JS
   const s = document.createElement('script');
-  s.setAttribute('data-kakao-map', '1');
-  s.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${KAKAO_MAP_KEY}&libraries=services&autoload=false`;
-  s.onload = () => { mapSDKLoaded = true; kakao.maps.load(initMap); };
+  s.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+  s.onload = () => { _leafletReady = true; initMap(); };
   s.onerror = () => {
-    $('kakao-map').innerHTML = `<div style="padding:32px 24px;color:#f87171;font-size:14px;line-height:2">
-      ⚠️ 지도 로드 실패<br>
-      <span style="color:#888;font-size:13px">
-        1. <a href="https://developers.kakao.com" target="_blank" style="color:#60a5fa">developers.kakao.com</a> 에서 도메인 저장 여부 확인<br>
-        2. 페이지 강력 새로고침 (Cmd+Shift+R / Ctrl+Shift+R)<br>
-        3. 저장 후 1~2분 뒤 재시도
-      </span>
-    </div>`;
+    container.innerHTML = '<div style="padding:40px;color:#f87171;font-size:14px">지도 라이브러리 로드 실패.<br>인터넷 연결을 확인하세요.</div>';
   };
   document.head.appendChild(s);
 }
@@ -725,15 +722,18 @@ function openMapView(drvFilter) {
 function initMap() {
   const container = $('kakao-map');
   container.innerHTML = '';
-  const map = new kakao.maps.Map(container, {
-    center: new kakao.maps.LatLng(37.5665, 126.9780),
-    level: 8
-  });
+  container.style.position = 'relative';
+
+  if (_leafletMap) { _leafletMap.remove(); _leafletMap = null; }
+
+  _leafletMap = L.map(container).setView([37.5665, 126.9780], 11);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+  }).addTo(_leafletMap);
 
   const allPlanItems = [...plan, ...specialPlan, ...secondaryPlan];
   const filtered = mapDrvFilter ? allPlanItems.filter(o => o.담당기사 === mapDrvFilter) : allPlanItems;
-
-  const allDrvs = [...currentCfg.map(d=>d.name), '택배', '미배정'];
+  const allDrvs = [...new Set([...currentCfg.map(d=>d.name), '택배', '미배정'])];
   const activeDrvs = mapDrvFilter ? [mapDrvFilter] : allDrvs.filter(d => filtered.some(o=>o.담당기사===d && o.배송주소));
 
   // 범례
@@ -744,55 +744,86 @@ function initMap() {
     </span>`;
   }).join('');
 
-  const geocoder = new kakao.maps.services.Geocoder();
+  // 주소 중복 제거
   const addrMap = new Map();
   filtered.forEach(o => {
-    if (!o.배송주소 || !o.배송주소.trim()) return;
+    if (!o.배송주소?.trim()) return;
     const addr = o.배송주소.trim();
     if (!addrMap.has(addr)) addrMap.set(addr, { drv: o.담당기사, name: o.거래처명 });
   });
 
   const entries = [...addrMap.entries()];
-  const bounds = new kakao.maps.LatLngBounds();
-  let hasCoords = false, idx = 0;
+  if (!entries.length) {
+    container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#888">주소 정보가 없습니다.</div>';
+    return;
+  }
 
-  function nextGeocode() {
-    if (idx >= entries.length) {
-      if (hasCoords) map.setBounds(bounds, 60);
-      return;
-    }
-    const [addr, info] = entries[idx++];
-    geocoder.addressSearch(addr, (result, status) => {
-      if (status === kakao.maps.services.Status.OK) {
-        const pos = new kakao.maps.LatLng(result[0].y, result[0].x);
-        bounds.extend(pos);
-        hasCoords = true;
-        const col = getDrvHex(info.drv);
-        const overlay = new kakao.maps.CustomOverlay({
-          position: pos,
-          content: `<div data-drv="${h(info.drv)}" data-name="${h(info.name)}" data-addr="${h(addr)}"
-            style="width:14px;height:14px;border-radius:50%;background:${col};border:2px solid #fff;box-shadow:0 2px 5px rgba(0,0,0,.5);cursor:pointer;transition:.1s"
-            onmouseover="this.style.transform='scale(1.5)'"
-            onmouseout="this.style.transform='scale(1)'"
-            onclick="(function(el){
-              const iw=document.getElementById('map-iw');
-              if(iw){iw.remove();}
-              const div=document.createElement('div');
-              div.id='map-iw';
-              div.style='position:absolute;bottom:20px;left:50%;transform:translateX(-50%);background:#fff;color:#111;padding:8px 12px;border-radius:8px;font-size:12px;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.3);z-index:100;pointer-events:none';
-              div.innerHTML='<b>'+el.dataset.name+'</b><br><span style=color:#666>'+el.dataset.drv+'</span>';
-              el.parentElement.style.position='relative';
-              el.parentElement.appendChild(div);
-              setTimeout(()=>{if(div.parentElement)div.remove();},3000);
-            })(this)"></div>`,
-          xAnchor: 0.5, yAnchor: 0.5
-        });
-        overlay.setMap(map);
+  const cache = loadGeoCache();
+  const needFetch = entries.filter(([addr]) => !cache[addr]);
+  const bounds = [];
+
+  // 캐시된 주소 즉시 마커 추가
+  entries.forEach(([addr, info]) => {
+    if (cache[addr]) addMarker(addr, info, cache[addr].lat, cache[addr].lng);
+  });
+  if (bounds.length) _leafletMap.fitBounds(bounds, { padding: [40, 40] });
+
+  if (!needFetch.length) return;
+
+  // 진행바
+  const prog = document.createElement('div');
+  prog.style.cssText = 'position:absolute;bottom:10px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.75);color:#fff;font-size:12px;padding:6px 14px;border-radius:20px;z-index:9999;pointer-events:none;white-space:nowrap';
+  prog.textContent = `0/${needFetch.length} 주소 변환 중...`;
+  container.appendChild(prog);
+
+  let done = 0;
+  let qIdx = 0;
+
+  function geocodeNext() {
+    if (qIdx >= needFetch.length) return;
+    const [addr, info] = needFetch[qIdx++];
+
+    fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=kr&q=${encodeURIComponent(addr)}`, {
+      headers: { 'Accept-Language': 'ko-KR,ko' }
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data?.[0]) {
+        const lat = parseFloat(data[0].lat), lng = parseFloat(data[0].lon);
+        cache[addr] = { lat, lng };
+        addMarker(addr, info, lat, lng);
+        if (bounds.length) _leafletMap.fitBounds(bounds, { padding: [40, 40] });
       }
-      setTimeout(nextGeocode, 40);
+    })
+    .catch(() => {})
+    .finally(() => {
+      done++;
+      if (done >= needFetch.length) {
+        saveGeoCache(cache);
+        prog.textContent = `완료 (${bounds.length}개 표시)`;
+        setTimeout(() => prog.remove(), 2000);
+      } else {
+        prog.textContent = `${done}/${needFetch.length} 주소 변환 중...`;
+      }
+      setTimeout(geocodeNext, 1100); // Nominatim: 1 req/sec
     });
   }
-  nextGeocode();
+
+  function addMarker(addr, info, lat, lng) {
+    bounds.push([lat, lng]);
+    const col = getDrvHex(info.drv);
+    L.circleMarker([lat, lng], {
+      radius: 9, fillColor: col, color: '#fff',
+      weight: 2.5, opacity: 1, fillOpacity: 0.9
+    }).addTo(_leafletMap)
+      .bindPopup(`<div style="font-family:'Apple SD Gothic Neo','맑은 고딕',sans-serif;min-width:160px">
+        <b style="font-size:14px">${h(info.name)}</b><br>
+        <span style="color:#555;font-size:12px">${h(info.drv)}</span><br>
+        <span style="color:#999;font-size:11px">${h(addr)}</span>
+      </div>`);
+  }
+
+  geocodeNext();
 }
 
 function openMasterModal() {

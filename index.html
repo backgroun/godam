@@ -15,19 +15,19 @@ body{font-family:'Apple SD Gothic Neo','맑은 고딕',sans-serif;background:#f0
 /* UPLOAD */
 .uprow{display:grid;grid-template-columns:1fr 56px 1fr;align-items:center}
 .up-arr{text-align:center;font-size:26px;color:#c0c7d0}
-.dz{border:2px dashed #d1d5db;border-radius:12px;padding:22px 14px;text-align:center;cursor:pointer;transition:.2s;background:#fafbfc}
+.dz{border:2px dashed #d1d5db;border-radius:10px;padding:10px 14px;text-align:center;cursor:pointer;transition:.2s;background:#fafbfc}
 .dz:hover,.dz.over{border-color:#4472C4;background:#eff4ff}
 .dz.done{border-color:#16a34a;border-style:solid;background:#f0fdf4}
 .dz.cached{border-color:#16a34a;border-style:solid;background:#f0fdf4;cursor:default}
 .dz.cached:hover{border-color:#16a34a;background:#f0fdf4}
-.dz-ico{font-size:36px;margin-bottom:8px;display:block}
-.dz-lbl{font-size:14px;font-weight:700;margin-bottom:3px}
-.dz-hint{font-size:11px;color:#9ca3af;margin-bottom:12px}
-.dz-pick{display:inline-block;padding:6px 18px;background:#4472C4;color:#fff;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer}
+.dz-ico{font-size:22px;margin-bottom:3px;display:block}
+.dz-lbl{font-size:13px;font-weight:700;margin-bottom:2px}
+.dz-hint{font-size:10px;color:#9ca3af;margin-bottom:6px}
+.dz-pick{display:inline-block;padding:4px 14px;background:#4472C4;color:#fff;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer}
 .dz.done .dz-pick{background:#16a34a}
-.dz-file{margin-top:8px;font-size:11px;font-weight:600;color:#16a34a;line-height:1.5}
-.dz-cached-info{font-size:13px;font-weight:700;color:#15803d;margin-bottom:4px}
-.dz-cached-sub{font-size:11px;color:#6b7280;margin-bottom:10px;line-height:1.6}
+.dz-file{margin-top:5px;font-size:11px;font-weight:600;color:#16a34a;line-height:1.5}
+.dz-cached-info{font-size:13px;font-weight:700;color:#15803d;margin-bottom:2px}
+.dz-cached-sub{font-size:11px;color:#6b7280;margin-bottom:6px;line-height:1.4}
 .m-btn-row{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-bottom:0}
 .m-add-btn{padding:5px 12px;background:#fff;color:#16a34a;border:1px solid #16a34a;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;transition:.15s}
 .m-add-btn:hover{background:#f0fdf4}
@@ -86,8 +86,12 @@ input[type=file]{display:none}
 .note{font-size:12px;color:#6b7280}
 .cust{font-weight:700}
 /* SEARCH */
-.search-inp{width:100%;padding:7px 11px;border:1px solid #d1d5db;border-radius:8px;font:inherit;font-size:13px;box-sizing:border-box;margin-bottom:10px}
+.search-inp{width:100%;padding:7px 11px;border:1px solid #d1d5db;border-radius:8px;font:inherit;font-size:13px;box-sizing:border-box;margin-bottom:0}
 .search-inp:focus{outline:none;border-color:#4472C4;box-shadow:0 0 0 2px rgba(68,114,196,.1)}
+#search-row{display:flex;gap:6px;align-items:center;margin-bottom:10px}
+.addr-toggle-btn{white-space:nowrap;padding:7px 11px;border:1px solid #d1d5db;border-radius:8px;background:#fff;color:#6b7280;font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0;transition:.15s}
+.addr-toggle-btn.active{background:#eff4ff;color:#4472C4;border-color:#4472C4}
+.upload-card{padding:12px 20px}
 /* STATS */
 .stat-body{margin-top:10px;overflow-x:auto}
 .stat-hdr{font-size:13px;font-weight:600;color:#4472C4;cursor:pointer;user-select:none;display:flex;align-items:center;gap:6px;margin-top:16px;padding:10px 14px;background:#fff;border:1px solid #e5e7eb;border-radius:10px}
@@ -202,7 +206,10 @@ input[type=file]{display:none}
     <b>⚠️ 주소 없는 거래처 (아래 탭에서 확인)</b>
     <span id="warn-txt"></span>
   </div>
-  <input type="text" id="search-inp" class="search-inp" placeholder="🔍  거래처명 / 품목명 검색..." oninput="filterSearch()" style="display:none">
+  <div id="search-row" style="display:none">
+    <input type="text" id="search-inp" class="search-inp" placeholder="🔍  거래처명 / 품목명 검색..." oninput="filterSearch()">
+    <button id="addr-toggle" class="addr-toggle-btn" onclick="toggleAddressCol()">주소 숨기기</button>
+  </div>
   <div class="tabs" id="tabs"></div>
   <div id="tab-panels"></div>
   <div class="actions">
@@ -262,6 +269,7 @@ const DEFAULTS = [
 
 let masterLookup = null, orders = null, plan = null, specialPlan = [], secondaryPlan = [], dlDate = '', currentCfg = [];
 const tabMeta = new Map(); // panelId → {rows, showDrv, showReassign}
+let addrHidden = false;
 
 const LS_DATA        = 'bp_master_v1';
 const LS_META        = 'bp_master_meta_v1';
@@ -387,7 +395,19 @@ function filterSearch() {
   const filtered = term
     ? rows.filter(o => o.거래처명.toLowerCase().includes(term) || String(o.품목명||'').toLowerCase().includes(term))
     : rows;
-  active.innerHTML = makePanelHTML(filtered, showDrv, showReassign);
+  active.innerHTML = makePanelHTML(filtered, showDrv, showReassign, !addrHidden);
+}
+
+function toggleAddressCol() {
+  addrHidden = !addrHidden;
+  const btn = $('addr-toggle');
+  btn.textContent = addrHidden ? '주소 보기' : '주소 숨기기';
+  btn.classList.toggle('active', addrHidden);
+  document.querySelectorAll('.tab-panel').forEach(p => {
+    if (!tabMeta.has(p.id)) return;
+    const { rows, showDrv, showReassign } = tabMeta.get(p.id);
+    p.innerHTML = makePanelHTML(rows, showDrv, showReassign, !addrHidden);
+  });
 }
 
 function saveStats(date, entry) {
@@ -616,7 +636,7 @@ function getDriver(zone, cfg){
   return '미배정';
 }
 
-function makePanelHTML(rows, showDrv, showReassign) {
+function makePanelHTML(rows, showDrv, showReassign, showAddr = true) {
   const map = new Map();
   rows.forEach(o => {
     if (!map.has(o.거래처명)) map.set(o.거래처명, { meta: o, items: [] });
@@ -625,7 +645,8 @@ function makePanelHTML(rows, showDrv, showReassign) {
   const groups = [...map.values()];
   const drvTh = showDrv ? `<th style="width:80px">담당기사</th>` : '';
   const raTh = showReassign ? `<th style="width:72px">배정변경</th>` : '';
-  const hdr = `<th style="width:28px">#</th><th style="width:88px">구역</th>${drvTh}<th style="width:130px">거래처명</th><th style="width:180px">배송주소</th><th>품목명</th><th style="width:42px">수량</th><th style="width:42px">구분</th><th style="width:65px">비고</th>${raTh}`;
+  const addrTh = showAddr ? `<th style="width:180px">배송주소</th>` : '';
+  const hdr = `<th style="width:28px">#</th><th style="width:88px">구역</th>${drvTh}<th style="width:130px">거래처명</th>${addrTh}<th>품목명</th><th style="width:42px">수량</th><th style="width:42px">구분</th><th style="width:65px">비고</th>${raTh}`;
   let seq = 0;
   const body = groups.map(({ meta: o, items }) => {
     seq++;
@@ -648,7 +669,7 @@ function makePanelHTML(rows, showDrv, showReassign) {
           <td style="${bgStyle}"${rs}><span class="zchip" style="${ZONE_STYLE[o.구역]||ZONE_STYLE['기타']}">${h(o.구역)}</span></td>
           ${drvCell}
           <td class="cust" style="${bgStyle}"${rs}>${h(o.거래처명)}</td>
-          <td class="addr-edit" style="${bgStyle}" ${rs} data-name="${h(o.거래처명)}" data-addr="${h(o.배송주소||'')}" onclick="startEditAddr(this)">${o.배송주소 ? h(o.배송주소) : '<span class="no-addr">+ 주소 추가</span>'}</td>
+          ${showAddr ? `<td class="addr-edit" style="${bgStyle}" ${rs} data-name="${h(o.거래처명)}" data-addr="${h(o.배송주소||'')}" onclick="startEditAddr(this)">${o.배송주소 ? h(o.배송주소) : '<span class="no-addr">+ 주소 추가</span>'}</td>` : ''}
           <td style="${bgStyle}">${h(item.품목명)}</td>
           <td style="${bgStyle};text-align:center">${h(item.수량)}</td>
           <td style="${bgStyle};text-align:center">${h(item.구분)}</td>
@@ -703,7 +724,7 @@ function renderResults(cfg){
   sg.innerHTML = tabs.innerHTML = tp.innerHTML = '';
   tabMeta.clear();
   $('search-inp').value = '';
-  $('search-inp').style.display = 'block';
+  $('search-row').style.display = 'flex';
 
   const allDrvs = [...cfg.map(d=>d.name), '미배정'];
 
@@ -775,7 +796,7 @@ function renderResults(cfg){
     const panelAll = document.createElement('div');
     panelAll.className = 'tab-panel';
     panelAll.id = 'tab_all';
-    panelAll.innerHTML = makePanelHTML(fullList, true, true);
+    panelAll.innerHTML = makePanelHTML(fullList, true, true, !addrHidden);
     tabMeta.set('tab_all', { rows: fullList, showDrv: true, showReassign: true });
     tp.appendChild(panelAll);
   }
@@ -804,7 +825,7 @@ function renderResults(cfg){
     panel.id = sid;
 
     const sorted = [...sub].sort((a,b)=>a.구역.localeCompare(b.구역)||a.거래처명.localeCompare(b.거래처명));
-    panel.innerHTML = makePanelHTML(sorted, false, true);
+    panel.innerHTML = makePanelHTML(sorted, false, true, !addrHidden);
     tabMeta.set(sid, { rows: sorted, showDrv: false, showReassign: true });
     tp.appendChild(panel);
   });
@@ -828,7 +849,7 @@ function renderResults(cfg){
     panel2.className = 'tab-panel';
     panel2.id = 'tab_secondary';
     const sorted2 = [...secondaryPlan].sort((a,b)=>a.거래처명.localeCompare(b.거래처명));
-    panel2.innerHTML = makePanelHTML(sorted2, false);
+    panel2.innerHTML = makePanelHTML(sorted2, false, false, !addrHidden);
     tp.appendChild(panel2);
   }
 
@@ -852,7 +873,7 @@ function renderResults(cfg){
     panel.className = 'tab-panel';
     panel.id = 'tab_special_nari';
     const sorted = [...specialPlan].sort((a,b)=>a.거래처명.localeCompare(b.거래처명));
-    panel.innerHTML = makePanelHTML(sorted, false);
+    panel.innerHTML = makePanelHTML(sorted, false, false, !addrHidden);
     tp.appendChild(panel);
   }
   renderStats();

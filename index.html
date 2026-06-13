@@ -1224,7 +1224,7 @@ function makePanelHTML(rows, showDrv, showReassign, showAddr = true, allowAddrAd
   const drvTh = showDrv ? `<th>담당기사</th>` : '';
   const raTh = showReassign ? `<th>배정변경</th>` : '';
   const addrTh = showAddr ? `<th>배송주소</th>` : '';
-  const hdr = `<th>#</th><th>구역</th>${drvTh}<th>거래처명</th>${raTh}<th>품목명</th><th>수량</th><th>구분</th><th>비고</th>${addrTh}`;
+  const hdr = `<th>#</th><th>구역</th>${drvTh}<th>거래처명</th>${raTh}<th>품목명</th><th style="min-width:55px">수량</th><th style="min-width:80px">구분</th><th>비고</th>${addrTh}`;
   let seq = 0;
   const body = groups.map(({ meta: o, items }) => {
     seq++;

@@ -18,8 +18,9 @@ body{font-family:'Apple SD Gothic Neo','맑은 고딕',sans-serif;background:#0d
 .dz{border:2px dashed #2a2a2a;border-radius:10px;padding:10px 14px;text-align:center;cursor:pointer;transition:.2s;background:#111}
 .dz:hover,.dz.over{border-color:#fff;background:#1a1a1a}
 .dz.done{border-color:#22c55e;border-style:solid;background:#061409}
-.dz.cached{border-color:#22c55e;border-style:solid;background:#061409;cursor:default}
+.dz.cached{border-color:#22c55e;border-style:solid;background:#061409;cursor:default;text-align:left}
 .dz.cached:hover{border-color:#22c55e;background:#061409}
+.cached-row{display:flex;align-items:center;gap:10px}
 .dz-ico{font-size:22px;margin-bottom:3px;display:block}
 .dz-lbl{font-size:13px;font-weight:700;margin-bottom:2px;color:#e5e5e5}
 .dz-hint{font-size:10px;color:#444;margin-bottom:6px}
@@ -97,6 +98,8 @@ input[type=file]{display:none}
 .search-inp{width:100%;padding:9px 13px;border:1px solid #252525;border-radius:10px;font:inherit;font-size:13px;box-sizing:border-box;margin-bottom:0;background:#111;color:#e5e5e5}
 .search-inp:focus{outline:none;border-color:#555;box-shadow:0 0 0 2px rgba(255,255,255,.04)}
 #search-row{display:flex;gap:8px;align-items:center;margin-bottom:12px}
+.search-btn{white-space:nowrap;padding:9px 16px;border:none;border-radius:10px;background:#fff;color:#000;font-size:13px;font-weight:700;cursor:pointer;flex-shrink:0;transition:.15s}
+.search-btn:hover{background:#e5e5e5}
 .addr-toggle-btn{white-space:nowrap;padding:9px 14px;border:1px solid #252525;border-radius:10px;background:#111;color:#555;font-size:12px;font-weight:700;cursor:pointer;flex-shrink:0;transition:.15s}
 .addr-toggle-btn:hover{color:#aaa;border-color:#444}
 .addr-toggle-btn.active{background:#071526;color:#60a5fa;border-color:#1e3a5f}
@@ -131,7 +134,7 @@ input[type=file]{display:none}
 <div class="wrap">
 
 <div class="hdr">
-  <h1>🚚 배송플랜 자동화</h1>
+  <h1>고담 배송플랜 자동화</h1>
   <p class="sub" id="sub-msg">거래처 마스터 + 발주 파일 업로드 → 기사별 배송플랜 자동 생성</p>
 </div>
 
@@ -149,12 +152,16 @@ input[type=file]{display:none}
       </div>
       <!-- 저장됨 상태 (localStorage) -->
       <div id="m-cached" style="display:none">
-        <span class="dz-ico">✅</span>
-        <div class="dz-cached-info" id="m-cached-cnt"></div>
-        <div class="dz-cached-sub" id="m-cached-sub"></div>
-        <div class="m-btn-row">
-          <button class="m-add-btn" onclick="event.stopPropagation();toggleAddForm()">+ 거래처 추가</button>
-          <button class="dz-update-btn" onclick="event.stopPropagation();openMasterPicker()">전체 파일 교체</button>
+        <div class="cached-row">
+          <span style="font-size:18px;flex-shrink:0">✅</span>
+          <div style="flex:1;min-width:0;text-align:left">
+            <div class="dz-cached-info" id="m-cached-cnt"></div>
+            <div class="dz-cached-sub" id="m-cached-sub" style="margin:0"></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">
+            <button class="m-add-btn" onclick="event.stopPropagation();toggleAddForm()">+ 거래처 추가</button>
+            <button class="dz-update-btn" onclick="event.stopPropagation();openMasterPicker()">파일 교체</button>
+          </div>
         </div>
         <div class="m-add-form" id="m-add-form" style="display:none" onclick="event.stopPropagation()">
           <input type="text" id="add-name" placeholder="거래처명 (예: 홍길동정육점)">
@@ -179,10 +186,14 @@ input[type=file]{display:none}
       </div>
       <!-- 저장됨 상태 -->
       <div id="o-cached" style="display:none">
-        <span class="dz-ico">✅</span>
-        <div class="dz-cached-info" id="o-cached-cnt"></div>
-        <div class="dz-cached-sub" id="o-cached-sub"></div>
-        <button class="dz-update-btn" onclick="event.stopPropagation();openOrderPicker()">파일 교체</button>
+        <div class="cached-row">
+          <span style="font-size:18px;flex-shrink:0">✅</span>
+          <div style="flex:1;min-width:0;text-align:left">
+            <div class="dz-cached-info" id="o-cached-cnt"></div>
+            <div class="dz-cached-sub" id="o-cached-sub" style="margin:0"></div>
+          </div>
+          <button class="dz-update-btn" onclick="event.stopPropagation();openOrderPicker()">파일 교체</button>
+        </div>
       </div>
     </div>
     <input type="file" id="f-o" accept=".xlsx,.xls">
@@ -216,12 +227,12 @@ input[type=file]{display:none}
 <!-- RESULTS -->
 <div id="results" style="display:none">
   <div class="sum-grid" id="sum-grid"></div>
-  <div class="warn" id="warn" style="display:none">
-    <b>⚠️ 주소 없는 거래처 (아래 탭에서 확인)</b>
-    <span id="warn-txt"></span>
-  </div>
   <div id="search-row" style="display:none">
-    <input type="text" id="search-inp" class="search-inp" placeholder="🔍  거래처명 / 품목명 검색..." oninput="filterSearch()">
+    <input type="text" id="search-inp" class="search-inp" placeholder="🔍  거래처명 / 품목명 검색..."
+      oninput="if(!searchComposing)filterSearch()"
+      oncompositionstart="searchComposing=true"
+      oncompositionend="searchComposing=false;filterSearch()">
+    <button class="search-btn" onclick="filterSearch()">검색</button>
     <button id="addr-toggle" class="addr-toggle-btn" onclick="toggleAddressCol()">주소 숨기기</button>
   </div>
   <div class="tabs" id="tabs"></div>
@@ -283,8 +294,8 @@ const DEFAULTS = [
 ];
 
 let masterLookup = null, orders = null, plan = null, specialPlan = [], secondaryPlan = [], dlDate = '', currentCfg = [];
-const tabMeta = new Map(); // panelId → {rows, showDrv, showReassign}
-let addrHidden = false;
+const tabMeta = new Map();
+let addrHidden = false, searchComposing = false;
 
 const LS_DATA        = 'bp_master_v1';
 const LS_META        = 'bp_master_meta_v1';
@@ -728,7 +739,8 @@ function makePanelHTML(rows, showDrv, showReassign, showAddr = true, allowAddrAd
     const rs = n > 1 ? ` rowspan="${n}"` : '';
     const bg = seq % 2 === 1 ? '#161616' : '#1c1c1c';
     const bgStyle = `background:${bg}`;
-    const drvCell = showDrv ? `<td style="${bgStyle};text-align:center"${rs}>${h(o.담당기사)}</td>` : '';
+    const drvShort = o.담당기사 ? o.담당기사.split(' ')[0] : '';
+    const drvCell = showDrv ? `<td style="${bgStyle};text-align:center"${rs}>${h(drvShort)}</td>` : '';
     const drvOpts = showReassign ? [...currentCfg.map(d=>d.name),'미배정']
       .map(d=>`<option value="${h(d)}"${o.담당기사===d?' selected':''}>${h(d)}</option>`).join('') : '';
     const raCell = showReassign
@@ -821,17 +833,10 @@ function renderResults(cfg){
     div.onclick = () => jumpToTab(sid);
     div.innerHTML = `<div class="drv">${h(drv)}</div>
       <div class="big">${customers}</div>
-      <div class="lbl">거래처 · ${qty.toFixed(0)}건</div>
       ${d ? `<div class="zns">${d.zones.join(' · ')}</div>` : ''}`;
     sg.appendChild(div);
   });
 
-  const noAddr = plan.filter(o=>!o.배송주소);
-  if (noAddr.length){
-    const names = [...new Set(noAddr.map(o=>o.거래처명))];
-    $('warn-txt').textContent = `총 ${names.length}개: ${names.join(', ')}`;
-    $('warn').style.display='block';
-  } else { $('warn').style.display='none'; }
 
   // 전체 리스트 탭 (2차 제외)
   const fullList = [...plan, ...specialPlan].sort((a,b)=>a.구역.localeCompare(b.구역)||a.거래처명.localeCompare(b.거래처명));

@@ -631,10 +631,9 @@ function renderResults(cfg){
   // 전체 리스트 탭 (2차 제외)
   const fullList = [...plan, ...specialPlan].sort((a,b)=>a.구역.localeCompare(b.구역)||a.거래처명.localeCompare(b.거래처명));
   if (fullList.length) {
-    const fullGrouped = groupOrders(fullList);
     const btnAll = document.createElement('button');
     btnAll.className = 'tab-btn';
-    btnAll.textContent = `전체 (${fullGrouped.length})`;
+    btnAll.textContent = `전체 (${new Set(fullList.map(o=>o.거래처명)).size})`;
     btnAll.style.borderBottomColor = '#374151';
     btnAll.onclick = () => {
       document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));

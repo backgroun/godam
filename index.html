@@ -438,6 +438,7 @@ const DRV_HEX_PALETTE = {c1:'#c2410c',c2:'#15803d',c3:'#1e40af',c4:'#6d28d9',c5:
 
 // 카카오 지도 API 키 (developers.kakao.com > 내 애플리케이션 > JavaScript 앱 키)
 const KAKAO_MAP_KEY = '63f7e8c47cd17fe37a247c10827789bd';
+const KAKAO_REST_KEY = 'ecb0c29ccb572cc5a0d4280e73beacdd';
 
 const EXCEL_INDEXED = [
   '#000000','#FFFFFF','#FF0000','#00FF00','#0000FF','#FFFF00','#FF00FF','#00FFFF',
@@ -776,20 +777,21 @@ function initMap() {
   prog.textContent = `0/${needFetch.length} 주소 변환 중...`;
   container.appendChild(prog);
 
-  let done = 0;
-  let qIdx = 0;
+  let done = 0, qIdx = 0;
+  const CONCURRENCY = 5;
 
-  function geocodeNext() {
+  function geocodeOne() {
     if (qIdx >= needFetch.length) return;
     const [addr, info] = needFetch[qIdx++];
 
-    fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=kr&q=${encodeURIComponent(addr)}`, {
-      headers: { 'Accept-Language': 'ko-KR,ko' }
+    fetch(`https://dapi.kakao.com/v2/local/search/address.json?query=${encodeURIComponent(addr)}&size=1`, {
+      headers: { 'Authorization': `KakaoAK ${KAKAO_REST_KEY}` }
     })
     .then(r => r.json())
     .then(data => {
-      if (data?.[0]) {
-        const lat = parseFloat(data[0].lat), lng = parseFloat(data[0].lon);
+      const doc = data?.documents?.[0];
+      if (doc) {
+        const lat = parseFloat(doc.y), lng = parseFloat(doc.x);
         cache[addr] = { lat, lng };
         addMarker(addr, info, lat, lng);
         if (bounds.length) _leafletMap.fitBounds(bounds, { padding: [40, 40] });
@@ -801,11 +803,11 @@ function initMap() {
       if (done >= needFetch.length) {
         saveGeoCache(cache);
         prog.textContent = `완료 (${bounds.length}개 표시)`;
-        setTimeout(() => prog.remove(), 2000);
+        setTimeout(() => prog.remove(), 1500);
       } else {
         prog.textContent = `${done}/${needFetch.length} 주소 변환 중...`;
+        geocodeOne();
       }
-      setTimeout(geocodeNext, 1100); // Nominatim: 1 req/sec
     });
   }
 
@@ -823,7 +825,8 @@ function initMap() {
       </div>`);
   }
 
-  geocodeNext();
+  // 5개 병렬 실행
+  for (let i = 0; i < Math.min(CONCURRENCY, needFetch.length); i++) geocodeOne();
 }
 
 function openMasterModal() {

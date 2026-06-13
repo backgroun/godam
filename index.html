@@ -124,6 +124,16 @@ input[type=file]{display:none}
 .dl-btn:hover{background:#e5e5e5}
 /* driver bg colors */
 .c1{background:#c2410c}.c2{background:#15803d}.c3{background:#1e40af}.c4{background:#6d28d9}.c5{background:#9d174d}.cmiss{background:#7f1d1d}.cspecial{background:#0e7490}.c2nd{background:#78350f}.ctbae{background:#0369a1}
+/* ALL-PANEL (전체 탭 화이트 배경) */
+.all-panel{background:#fff!important}
+.all-panel .ptbl th{background:#f3f4f6;color:#111;border-bottom:2px solid #d1d5db}
+.all-panel .ptbl td{color:#111}
+.all-panel .ptbl .cust{color:#111}
+.all-panel .ptbl .grp-last td{border-bottom:2px solid #d1d5db}
+.all-panel .ptbl .grp-inner td{border-bottom:1px dashed #e5e7eb}
+/* MAP BUTTON */
+.map-btn{background:#0369a1;color:#fff}
+.map-btn:hover{background:#1d4ed8}
 /* MASTER LIST */
 #master-scroll{max-height:calc(75vh - 180px);overflow-y:auto;overflow-x:auto;border-radius:8px;border:1px solid #2e2e2e}
 #master-modal .ptbl thead th{position:sticky;top:0;z-index:2;background:#141414}
@@ -302,6 +312,18 @@ input[type=file]{display:none}
   </div>
 </div>
 
+<!-- MAP MODAL -->
+<div class="modal-overlay" id="map-modal" onclick="if(event.target===this)closeModal('map-modal')">
+  <div class="modal" style="max-width:960px">
+    <div class="modal-hdr" style="flex-wrap:wrap;gap:6px">
+      <span>🗺 배송지 지도</span>
+      <div id="map-legend" style="display:flex;gap:6px;flex-wrap:wrap;flex:1;padding:0 8px;align-items:center;min-height:24px"></div>
+      <button class="modal-close" onclick="closeModal('map-modal')">✕</button>
+    </div>
+    <div id="kakao-map" style="width:100%;height:66vh;min-height:380px;background:#1a1a1a;display:flex;align-items:center;justify-content:center;color:#888"></div>
+  </div>
+</div>
+
 <!-- SHARE CARD MODAL -->
 <div class="modal-overlay" id="share-modal" onclick="if(event.target===this)closeModal('share-modal')">
   <div class="modal" style="max-width:600px">
@@ -334,11 +356,12 @@ input[type=file]{display:none}
       oncompositionstart="searchComposing=true"
       oncompositionend="searchComposing=false;filterSearch()">
     <button class="search-btn" onclick="filterSearch()">검색</button>
-    <button id="addr-toggle" class="addr-toggle-btn" onclick="toggleAddressCol()">주소 숨기기</button>
+    <button id="addr-toggle" class="addr-toggle-btn active" onclick="toggleAddressCol()">주소 보기</button>
   </div>
   <div class="tabs" id="tabs"></div>
   <div id="tab-panels"></div>
   <div class="actions">
+    <button class="abtn map-btn" onclick="openMapView()">🗺 지도 보기</button>
     <button class="abtn print-btn" onclick="window.print()">🖨 인쇄</button>
     <button class="abtn dl-btn" onclick="dlExcel()">📥 Excel 다운로드</button>
   </div>
@@ -386,6 +409,43 @@ const ZONE_STYLE = {
 };
 
 const DRV_CLR = ['c1','c2','c3','c4','c5','c5'];
+const DRV_HEX_PALETTE = {c1:'#c2410c',c2:'#15803d',c3:'#1e40af',c4:'#6d28d9',c5:'#9d174d',cmiss:'#7f1d1d',cspecial:'#0e7490',c2nd:'#78350f',ctbae:'#0369a1'};
+
+// 카카오 지도 API 키 (developers.kakao.com > 내 애플리케이션 > JavaScript 앱 키)
+const KAKAO_MAP_KEY = '';
+
+const EXCEL_INDEXED = [
+  '#000000','#FFFFFF','#FF0000','#00FF00','#0000FF','#FFFF00','#FF00FF','#00FFFF',
+  '#000000','#FFFFFF','#FF0000','#00FF00','#0000FF','#FFFF00','#FF00FF','#00FFFF',
+  '#800000','#008000','#000080','#808000','#800080','#008080','#C0C0C0','#808080',
+  '#9999FF','#993366','#FFFFCC','#CCFFFF','#660066','#FF8080','#0066CC','#CCCCFF',
+  '#000080','#FF00FF','#FFFF00','#00FFFF','#800080','#800000','#008080','#0000FF',
+  '#00CCFF','#CCFFFF','#CCFFCC','#FFFF99','#99CCFF','#FF99CC','#CC99FF','#FFCC99',
+  '#3366FF','#33CCCC','#99CC00','#FFCC00','#FF9900','#FF6600','#666699','#969696',
+  '#003366','#339966','#003300','#333300','#993300','#993366','#333399','#333333'
+];
+
+function autoTextColor(bgHex) {
+  if (!bgHex) return null;
+  const hx = bgHex.replace('#','');
+  const r = parseInt(hx.slice(0,2),16), g = parseInt(hx.slice(2,4),16), b = parseInt(hx.slice(4,6),16);
+  return (0.299*r + 0.587*g + 0.114*b) / 255 > 0.5 ? '#111111' : '#ffffff';
+}
+
+function custDisplay(name) {
+  if (!name) return '';
+  if (name.length <= 15) return h(name);
+  const parts = [];
+  for (let i = 0; i < name.length; i += 15) parts.push(h(name.slice(i, i+15)));
+  return parts.join('<br>');
+}
+
+function getDrvHex(drv) {
+  const allDrvs = [...currentCfg.map(d=>d.name), '택배', '미배정'];
+  const i = allDrvs.indexOf(drv);
+  const cls = drv==='미배정' ? 'cmiss' : drv==='택배' ? 'ctbae' : (DRV_CLR[i]||'c1');
+  return DRV_HEX_PALETTE[cls] || '#888888';
+}
 
 const DEFAULTS = [
   {name:'김남규 기사', zones:'강남권, 서울중부권'},
@@ -397,7 +457,7 @@ const DEFAULTS = [
 
 let masterLookup = null, orders = null, plan = null, specialPlan = [], secondaryPlan = [], dlDate = '', currentCfg = [];
 const tabMeta = new Map();
-let addrHidden = false, searchComposing = false;
+let addrHidden = true, searchComposing = false;
 
 const LS_DATA        = 'bp_master_v1';
 const LS_META        = 'bp_master_meta_v1';
@@ -573,6 +633,100 @@ function closeModal(id) {
   document.body.style.overflow = '';
 }
 
+let mapSDKLoaded = false;
+function openMapView() {
+  if (!KAKAO_MAP_KEY) {
+    alert('카카오 지도 API 키가 필요합니다.\n\n① developers.kakao.com 접속\n② 내 애플리케이션 > 앱 만들기\n③ 앱 키 > JavaScript 키 복사\n④ index.html 상단 KAKAO_MAP_KEY 에 붙여넣기');
+    return;
+  }
+  openModal('map-modal');
+  $('kakao-map').innerHTML = '<div style="padding:40px;color:#888;font-size:15px">지도 로딩 중...</div>';
+  if (!mapSDKLoaded) {
+    const s = document.createElement('script');
+    s.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${KAKAO_MAP_KEY}&libraries=services&autoload=false`;
+    s.onload = () => { mapSDKLoaded = true; kakao.maps.load(initMap); };
+    s.onerror = () => { $('kakao-map').innerHTML = '<div style="padding:40px;color:#f87171;font-size:14px">지도 로드 실패. API 키를 확인하세요.</div>'; };
+    document.head.appendChild(s);
+  } else {
+    kakao.maps.load(initMap);
+  }
+}
+
+function initMap() {
+  const container = $('kakao-map');
+  container.innerHTML = '';
+  const map = new kakao.maps.Map(container, {
+    center: new kakao.maps.LatLng(37.5665, 126.9780),
+    level: 8
+  });
+
+  const allDrvs = [...currentCfg.map(d=>d.name), '택배', '미배정'];
+  const activeDrvs = allDrvs.filter(d => [...plan,...specialPlan,...secondaryPlan].some(o=>o.담당기사===d && o.배송주소));
+
+  // 범례 생성
+  const legend = $('map-legend');
+  legend.innerHTML = activeDrvs.map(drv => {
+    const col = getDrvHex(drv);
+    return `<span style="display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;background:rgba(0,0,0,.35);padding:3px 9px;border-radius:12px;color:#fff">
+      <span style="width:10px;height:10px;border-radius:50%;background:${col};display:inline-block;flex-shrink:0;border:1px solid rgba(255,255,255,.4)"></span>${h(drv)}
+    </span>`;
+  }).join('');
+
+  const geocoder = new kakao.maps.services.Geocoder();
+  // 주소 중복 제거
+  const addrMap = new Map();
+  [...plan,...specialPlan,...secondaryPlan].forEach(o => {
+    if (!o.배송주소 || !o.배송주소.trim()) return;
+    const addr = o.배송주소.trim();
+    if (!addrMap.has(addr)) addrMap.set(addr, { drv: o.담당기사, name: o.거래처명 });
+  });
+
+  const entries = [...addrMap.entries()];
+  const bounds = new kakao.maps.LatLngBounds();
+  let hasCoords = false;
+  let idx = 0;
+
+  const infoWin = new kakao.maps.InfoWindow({ zIndex: 10 });
+
+  function nextGeocode() {
+    if (idx >= entries.length) {
+      if (hasCoords) map.setBounds(bounds, 60);
+      return;
+    }
+    const [addr, info] = entries[idx++];
+    geocoder.addressSearch(addr, (result, status) => {
+      if (status === kakao.maps.services.Status.OK) {
+        const pos = new kakao.maps.LatLng(result[0].y, result[0].x);
+        bounds.extend(pos);
+        hasCoords = true;
+        const col = getDrvHex(info.drv);
+        const overlay = new kakao.maps.CustomOverlay({
+          position: pos,
+          content: `<div data-drv="${h(info.drv)}" data-name="${h(info.name)}" data-addr="${h(addr)}"
+            style="width:14px;height:14px;border-radius:50%;background:${col};border:2px solid #fff;box-shadow:0 2px 5px rgba(0,0,0,.5);cursor:pointer;transition:.1s"
+            onmouseover="this.style.transform='scale(1.5)'"
+            onmouseout="this.style.transform='scale(1)'"
+            onclick="(function(el){
+              const iw=document.getElementById('map-iw');
+              if(iw){iw.remove();}
+              const div=document.createElement('div');
+              div.id='map-iw';
+              div.style='position:absolute;bottom:20px;left:50%;transform:translateX(-50%);background:#fff;color:#111;padding:8px 12px;border-radius:8px;font-size:12px;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.3);z-index:100;pointer-events:none';
+              div.innerHTML='<b>'+el.dataset.name+'</b><br><span style=color:#666>'+el.dataset.drv+'</span>';
+              el.parentElement.style.position='relative';
+              el.parentElement.appendChild(div);
+              setTimeout(()=>{if(div.parentElement)div.remove();},3000);
+            })(this)"></div>`,
+          xAnchor: 0.5, yAnchor: 0.5
+        });
+        overlay.setMap(map);
+      }
+      setTimeout(nextGeocode, 40);
+    });
+  }
+  nextGeocode();
+}
+
 function openMasterModal() {
   renderMasterList();
   openModal('master-modal');
@@ -611,11 +765,11 @@ function filterSearch() {
   const term = ($('search-inp').value || '').trim().toLowerCase();
   const active = document.querySelector('.tab-panel.active');
   if (!active || !tabMeta.has(active.id)) return;
-  const { rows, showDrv, showReassign, allowAddrAdd = true } = tabMeta.get(active.id);
+  const { rows, showDrv, showReassign, allowAddrAdd = true, isAll = false } = tabMeta.get(active.id);
   const filtered = term
     ? rows.filter(o => o.거래처명.toLowerCase().includes(term) || String(o.품목명||'').toLowerCase().includes(term))
     : rows;
-  active.innerHTML = makePanelHTML(filtered, showDrv, showReassign, !addrHidden, allowAddrAdd);
+  active.innerHTML = makePanelHTML(filtered, showDrv, showReassign, !addrHidden, allowAddrAdd, isAll);
 }
 
 function openAddrSearch(cell) {
@@ -648,8 +802,8 @@ function toggleAddressCol() {
   btn.classList.toggle('active', addrHidden);
   document.querySelectorAll('.tab-panel').forEach(p => {
     if (!tabMeta.has(p.id)) return;
-    const { rows, showDrv, showReassign, allowAddrAdd = true } = tabMeta.get(p.id);
-    p.innerHTML = makePanelHTML(rows, showDrv, showReassign, !addrHidden, allowAddrAdd);
+    const { rows, showDrv, showReassign, allowAddrAdd = true, isAll = false } = tabMeta.get(p.id);
+    p.innerHTML = makePanelHTML(rows, showDrv, showReassign, !addrHidden, allowAddrAdd, isAll);
   });
 }
 
@@ -1019,14 +1173,18 @@ function parseOrders(wb){
     const cell = ws[cellRef];
     if (cell && cell.s) {
       const fg = cell.s.fgColor;
-      if (fg && fg.rgb) {
-        const rgb = (fg.rgb.length > 6 ? fg.rgb.slice(-6) : fg.rgb).toUpperCase();
-        if (!/^F{6}$/.test(rgb) && !/^0{6}$/.test(rgb)) obj._bg = '#' + rgb;
+      if (fg) {
+        let bgRgb = null;
+        if (fg.rgb) bgRgb = (fg.rgb.length > 6 ? fg.rgb.slice(-6) : fg.rgb).toUpperCase();
+        else if (fg.indexed != null && fg.indexed < EXCEL_INDEXED.length) bgRgb = EXCEL_INDEXED[fg.indexed].slice(1);
+        if (bgRgb && !/^F{6}$/.test(bgRgb) && !/^0{6}$/.test(bgRgb)) obj._bg = '#' + bgRgb;
       }
       const fc = cell.s.font && cell.s.font.color;
-      if (fc && fc.rgb) {
-        const rgb = (fc.rgb.length > 6 ? fc.rgb.slice(-6) : fc.rgb).toUpperCase();
-        if (!/^0{6}$/.test(rgb) && !/^F{6}$/.test(rgb)) obj._font = '#' + rgb;
+      if (fc) {
+        let fRgb = null;
+        if (fc.rgb) fRgb = (fc.rgb.length > 6 ? fc.rgb.slice(-6) : fc.rgb).toUpperCase();
+        else if (fc.indexed != null && fc.indexed < EXCEL_INDEXED.length && fc.indexed > 1) fRgb = EXCEL_INDEXED[fc.indexed].slice(1);
+        if (fRgb && !/^0{6}$/.test(fRgb) && !/^F{6}$/.test(fRgb)) obj._font = '#' + fRgb;
       }
     }
     orders.push(obj);
@@ -1052,60 +1210,70 @@ function getDriver(zone, cfg){
   return '미배정';
 }
 
-function makePanelHTML(rows, showDrv, showReassign, showAddr = true, allowAddrAdd = true) {
+function makePanelHTML(rows, showDrv, showReassign, showAddr = true, allowAddrAdd = true, isAll = false) {
   const map = new Map();
   rows.forEach(o => {
     if (!map.has(o.거래처명)) map.set(o.거래처명, { meta: o, items: [] });
-    map.get(o.거래처명).items.push({ 품목명: String(o.품목명||''), 수량: String(o.수량||''), 구분: String(o.구분||''), _bg: o._bg||null, _font: o._font||null });
+    map.get(o.거래처명).items.push({
+      품목명: String(o.품목명||''), 수량: String(o.수량||''), 구분: String(o.구분||''),
+      비고1: String(o.비고1||''), 비고2: String(o.비고2||''),
+      _bg: o._bg||null, _font: o._font||null
+    });
   });
   const groups = [...map.values()];
   const drvTh = showDrv ? `<th>담당기사</th>` : '';
   const raTh = showReassign ? `<th>배정변경</th>` : '';
-  const addrTh = showAddr ? `<th style="width:195px">배송주소</th>` : '';
-  const hdr = `<th>#</th><th>구역</th>${drvTh}<th>거래처명</th>${raTh}<th>품목명</th><th>수량</th><th>구분</th><th style="width:140px">비고</th>${addrTh}`;
+  const addrTh = showAddr ? `<th>배송주소</th>` : '';
+  const hdr = `<th>#</th><th>구역</th>${drvTh}<th>거래처명</th>${raTh}<th>품목명</th><th>수량</th><th>구분</th><th>비고</th>${addrTh}`;
   let seq = 0;
   const body = groups.map(({ meta: o, items }) => {
     seq++;
     const n = items.length;
     const rs = n > 1 ? ` rowspan="${n}"` : '';
-    const stripeBg = seq % 2 === 1 ? '#141414' : '#202020';
-    const bg = items[0]._bg || stripeBg;
-    const bgStyle = `background:${bg}${items[0]._font ? `;color:${items[0]._font}` : ''}`;
+    const stripe = seq % 2 === 1
+      ? (isAll ? '#ffffff' : '#141414')
+      : (isAll ? '#f9fafb' : '#202020');
+    const grpText = isAll ? '#111111' : null;
+    const grpStyle = `background:${stripe}${grpText ? `;color:${grpText}` : ''}`;
     const drvShort = o.담당기사 ? o.담당기사.split(' ')[0] : '';
-    const drvCell = showDrv ? `<td style="${bgStyle};text-align:center"${rs}>${h(drvShort)}</td>` : '';
+    const drvCell = showDrv ? `<td style="${grpStyle};text-align:center"${rs}>${h(drvShort)}</td>` : '';
     const drvOpts = showReassign ? [...currentCfg.map(d=>d.name),'택배','미배정']
       .map(d=>`<option value="${h(d)}"${o.담당기사===d?' selected':''}>${h(d)}</option>`).join('') : '';
     const raCell = showReassign
-      ? `<td style="${bgStyle};vertical-align:top;padding-top:10px"${rs}><select class="drv-sel" data-name="${h(o.거래처명)}" onchange="reassign(this.dataset.name,this.value)">${drvOpts}</select></td>`
+      ? `<td style="${grpStyle};vertical-align:top;padding-top:10px"${rs}><select class="drv-sel" data-name="${h(o.거래처명)}" onchange="reassign(this.dataset.name,this.value)">${drvOpts}</select></td>`
       : '';
     return items.map((item, idx) => {
       const isLast = idx === n - 1;
       const cls = n > 1 ? (isLast ? ' class="grp-last"' : ' class="grp-inner"') : '';
-      const iBg = item._bg || stripeBg;
-      const iStyle = `background:${iBg}${item._font ? `;color:${item._font}` : ''}`;
+      const iBg = item._bg || stripe;
+      const iText = item._font || (item._bg ? autoTextColor(item._bg) : (isAll ? '#111111' : null));
+      const iStyle = `background:${iBg}${iText ? `;color:${iText}` : ''}`;
+      const note = [item.비고1, item.비고2].filter(Boolean).map(h).join(' / ');
       if (idx === 0) {
+        const addrCell = showAddr ? (o.배송주소
+          ? `<td class="addr-edit" style="${grpStyle}" ${rs} data-name="${h(o.거래처명)}" data-addr="${h(o.배송주소)}" onclick="startEditAddr(this)">${h(o.배송주소)}</td>`
+          : allowAddrAdd
+            ? `<td style="${grpStyle}" ${rs} data-name="${h(o.거래처명)}" onclick="openAddrSearch(this)"><span class="no-addr">+ 주소 검색</span></td>`
+            : `<td style="${grpStyle}" ${rs}></td>`
+        ) : '';
         return `<tr${cls}>
-          <td style="${bgStyle};text-align:center;color:#888"${rs}>${seq}</td>
-          <td style="${bgStyle}"${rs}><span class="zchip" style="${ZONE_STYLE[o.구역]||ZONE_STYLE['기타']}">${h(o.구역)}</span></td>
+          <td style="${grpStyle};text-align:center;color:#888"${rs}>${seq}</td>
+          <td style="${grpStyle}"${rs}><span class="zchip" style="${ZONE_STYLE[o.구역]||ZONE_STYLE['기타']}">${h(o.구역)}</span></td>
           ${drvCell}
-          <td class="cust" style="${bgStyle}"${rs}>${h(o.거래처명)}</td>
+          <td class="cust" style="${grpStyle}"${rs}>${custDisplay(o.거래처명)}</td>
           ${raCell}
           <td style="${iStyle}">${h(item.품목명)}</td>
           <td style="${iStyle};text-align:center">${h(item.수량)}</td>
           <td style="${iStyle};text-align:center">${h(item.구분)}</td>
-          <td class="note" style="${bgStyle}"${rs}>${[o.비고1,o.비고2].filter(Boolean).map(h).join(' / ')}</td>
-          ${showAddr ? (o.배송주소
-            ? `<td class="addr-edit" style="${bgStyle}" ${rs} data-name="${h(o.거래처명)}" data-addr="${h(o.배송주소)}" onclick="startEditAddr(this)">${h(o.배송주소)}</td>`
-            : allowAddrAdd
-              ? `<td style="${bgStyle}" ${rs} data-name="${h(o.거래처명)}" onclick="openAddrSearch(this)"><span class="no-addr">+ 주소 검색</span></td>`
-              : `<td style="${bgStyle}" ${rs}></td>`
-          ) : ''}
+          <td class="note" style="${iStyle}">${note}</td>
+          ${addrCell}
         </tr>`;
       }
       return `<tr${cls}>
           <td style="${iStyle}">${h(item.품목명)}</td>
           <td style="${iStyle};text-align:center">${h(item.수량)}</td>
           <td style="${iStyle};text-align:center">${h(item.구분)}</td>
+          <td class="note" style="${iStyle}">${note}</td>
         </tr>`;
     }).join('');
   }).join('');
@@ -1192,10 +1360,10 @@ function renderResults(cfg){
     tabs.appendChild(btnAll);
 
     const panelAll = document.createElement('div');
-    panelAll.className = 'tab-panel';
+    panelAll.className = 'tab-panel all-panel';
     panelAll.id = 'tab_all';
-    panelAll.innerHTML = makePanelHTML(fullList, true, true, !addrHidden);
-    tabMeta.set('tab_all', { rows: fullList, showDrv: true, showReassign: true });
+    panelAll.innerHTML = makePanelHTML(fullList, true, true, !addrHidden, true, true);
+    tabMeta.set('tab_all', { rows: fullList, showDrv: true, showReassign: true, isAll: true });
     tp.appendChild(panelAll);
   }
 

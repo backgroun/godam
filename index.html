@@ -42,10 +42,13 @@ body{font-family:'Apple SD Gothic Neo','맑은 고딕',sans-serif;background:#0d
 .m-submit-btn{padding:5px 14px;background:#22c55e;color:#000;border:none;border-radius:5px;font-size:13px;font-weight:700;cursor:pointer}
 input[type=file]{display:none}
 /* SETTINGS */
-.stg-hdr{font-size:14px;font-weight:700;color:#999;cursor:pointer;user-select:none;display:flex;align-items:center;gap:6px;transition:.15s}
-.stg-hdr:hover{color:#fff}
-.stg-body{margin-top:14px;display:none}
-.stg-body.open{display:block}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:1000;justify-content:center;align-items:flex-start;padding:48px 16px 32px;overflow-y:auto}
+.modal-overlay.open{display:flex}
+.modal{background:#141414;border:1px solid #2e2e2e;border-radius:16px;width:100%;max-width:720px;overflow:hidden;margin:auto}
+.modal-hdr{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #2e2e2e;font-size:15px;font-weight:700;color:#fff}
+.modal-close{background:none;border:none;color:#555;font-size:24px;cursor:pointer;line-height:1;padding:0 2px;transition:.12s}
+.modal-close:hover{color:#fff}
+.modal-body{padding:20px}
 .stg-note{font-size:13px;color:#888;margin-bottom:10px}
 .dtbl{width:100%;border-collapse:collapse;font-size:14px}
 .dtbl th{background:#1e1e1e;padding:10px 12px;font-weight:700;border:1px solid #333;text-align:left;color:#bbb}
@@ -120,12 +123,8 @@ input[type=file]{display:none}
 /* driver bg colors */
 .c1{background:#c2410c}.c2{background:#15803d}.c3{background:#1e40af}.c4{background:#6d28d9}.c5{background:#9d174d}.cmiss{background:#7f1d1d}.cspecial{background:#0e7490}.c2nd{background:#78350f}.ctbae{background:#0369a1}
 /* MASTER LIST */
-.master-hdr{font-size:14px;font-weight:700;color:#999;cursor:pointer;user-select:none;display:flex;align-items:center;gap:6px;transition:.15s}
-.master-hdr:hover{color:#fff}
-.master-body{margin-top:14px;display:none}
-.master-body.open{display:block}
-#master-scroll{max-height:460px;overflow-y:auto;overflow-x:auto;border-radius:8px;border:1px solid #2e2e2e}
-#master-card .ptbl thead th{position:sticky;top:0;z-index:2;background:#141414}
+#master-scroll{max-height:calc(75vh - 180px);overflow-y:auto;overflow-x:auto;border-radius:8px;border:1px solid #2e2e2e}
+#master-modal .ptbl thead th{position:sticky;top:0;z-index:2;background:#141414}
 .master-addr-cell{cursor:pointer}
 .master-addr-cell:hover{outline:1px dashed #22c55e;background:#0a1f12!important}
 /* PRINT */
@@ -254,50 +253,49 @@ input[type=file]{display:none}
   </div>
 </div>
 
-<!-- SETTINGS -->
-<div class="card settings-card">
-  <div class="stg-hdr" onclick="toggleStg()">
-    <span>⚙️</span> 기사 배정 설정 보기/편집 <span id="stg-arrow">▼</span>
-  </div>
-  <div class="stg-body" id="stg-body">
-    <p class="stg-note">기사 이름과 담당 구역을 수정하세요. 구역명은 아래 목록에서 그대로 입력하세요.</p>
-    <table class="dtbl"><thead><tr>
-      <th style="width:130px">기사 이름</th>
-      <th>담당 구역 (쉼표 구분)</th>
-      <th style="width:46px;text-align:center">삭제</th>
-    </tr></thead>
-    <tbody id="drv-tbody"></tbody></table>
-    <div class="stg-btn-row">
-      <button class="add-btn" onclick="addRow()">+ 기사 추가</button>
-      <button class="save-drv-btn" onclick="saveDriverSettings()">저장</button>
+<!-- DRIVER SETTINGS MODAL -->
+<div class="modal-overlay" id="drv-modal" onclick="if(event.target===this)closeModal('drv-modal')">
+  <div class="modal">
+    <div class="modal-hdr">⚙️ 기사 배정 설정<button class="modal-close" onclick="closeModal('drv-modal')">✕</button></div>
+    <div class="modal-body">
+      <p class="stg-note">기사 이름과 담당 구역을 수정하세요. 구역명은 아래 목록에서 그대로 입력하세요.</p>
+      <table class="dtbl"><thead><tr>
+        <th style="width:130px">기사 이름</th>
+        <th>담당 구역 (쉼표 구분)</th>
+        <th style="width:46px;text-align:center">삭제</th>
+      </tr></thead>
+      <tbody id="drv-tbody"></tbody></table>
+      <div class="stg-btn-row">
+        <button class="add-btn" onclick="addRow()">+ 기사 추가</button>
+        <button class="save-drv-btn" onclick="saveDriverSettings()">저장</button>
+      </div>
+      <p class="zones-ref"><b>사용 가능한 구역명:</b> 강남권, 강북권, 서울중부권, 서울서부권, 경기동북권, 경기동부권, 경기남부권, 경기서부권, 인천권, 택배</p>
     </div>
-    <p class="zones-ref"><b>사용 가능한 구역명:</b> 강남권, 강북권, 서울중부권, 서울서부권, 경기동북권, 경기동부권, 경기남부권, 경기서부권, 인천권, 택배</p>
   </div>
 </div>
 
-<!-- MASTER LIST -->
-<div class="card" id="master-card">
-  <div class="master-hdr" onclick="toggleMasterList()">
-    🗄 거래처 전체 목록 <span id="master-cnt-label" style="color:#666;font-weight:400;font-size:13px;margin-left:4px"></span>
-    <span id="master-arrow" style="margin-left:auto">▼</span>
-  </div>
-  <div class="master-body" id="master-body">
-    <div style="margin-bottom:12px">
-      <input type="text" id="master-search" class="search-inp" placeholder="🔍 거래처명 검색..."
-        oninput="renderMasterList()"
-        oncompositionend="renderMasterList()">
-    </div>
-    <div id="master-scroll">
-      <table class="ptbl">
-        <thead><tr>
-          <th style="width:38px">#</th>
-          <th style="min-width:130px">거래처명</th>
-          <th>배송주소 <span style="font-size:11px;font-weight:400;color:#666">(클릭하여 수정 · 검색 가능)</span></th>
-        </tr></thead>
-        <tbody id="master-tbody">
-          <tr><td colspan="3" style="text-align:center;color:#555;padding:20px;font-size:14px">마스터 파일을 먼저 업로드하세요</td></tr>
-        </tbody>
-      </table>
+<!-- MASTER LIST MODAL -->
+<div class="modal-overlay" id="master-modal" onclick="if(event.target===this)closeModal('master-modal')">
+  <div class="modal" style="max-width:860px">
+    <div class="modal-hdr">🗄 거래처 전체 목록 <span id="master-cnt-label" style="color:#666;font-weight:400;font-size:13px;margin-left:4px"></span><button class="modal-close" onclick="closeModal('master-modal')">✕</button></div>
+    <div class="modal-body">
+      <div style="margin-bottom:12px">
+        <input type="text" id="master-search" class="search-inp" placeholder="🔍 거래처명 검색..."
+          oninput="renderMasterList()"
+          oncompositionend="renderMasterList()">
+      </div>
+      <div id="master-scroll">
+        <table class="ptbl">
+          <thead><tr>
+            <th style="width:38px">#</th>
+            <th style="min-width:130px">거래처명</th>
+            <th>배송주소 <span style="font-size:11px;font-weight:400;color:#666">(클릭하여 수정 · 검색 가능)</span></th>
+          </tr></thead>
+          <tbody id="master-tbody">
+            <tr><td colspan="3" style="text-align:center;color:#555;padding:20px;font-size:14px">마스터 파일을 먼저 업로드하세요</td></tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 </div>
@@ -305,8 +303,8 @@ input[type=file]{display:none}
 <!-- GENERATE -->
 <div class="act-btns">
   <button class="gen-btn" id="gen-btn" disabled onclick="generate()">🗺 배송플랜 생성</button>
-  <button class="action-btn" onclick="scrollToResults()">🔄 기사 배정 변경</button>
-  <button class="action-btn" onclick="openMasterCard()">📋 거래처 전체 목록</button>
+  <button class="action-btn" onclick="openModal('drv-modal')">⚙️ 기사 배정 변경</button>
+  <button class="action-btn" onclick="openMasterModal()">📋 거래처 전체 목록</button>
 </div>
 
 <!-- RESULTS -->
@@ -417,7 +415,7 @@ function showCachedMaster(meta) {
   $('m-cached-cnt').textContent = `거래처 마스터 저장됨 (${meta.count.toLocaleString()}개)`;
   $('m-cached-sub').innerHTML = `${h(meta.filename)}<br>저장일: ${h(meta.date)}`;
   $('master-cnt-label').textContent = `(${meta.count.toLocaleString()}개)`;
-  if ($('master-body')?.classList.contains('open')) renderMasterList();
+  if ($('master-modal')?.classList.contains('open')) renderMasterList();
 }
 
 function showUploadMaster() {
@@ -474,20 +472,19 @@ function reassign(name, newDriver) {
   window.scrollTo(0, sy);
 }
 
-function scrollToResults() {
-  const el = $('results');
-  if (!el || el.style.display === 'none') { alert('먼저 배송플랜을 생성하세요.'); return; }
-  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+function openModal(id) {
+  $(id).classList.add('open');
+  document.body.style.overflow = 'hidden';
 }
 
-function openMasterCard() {
-  const body = $('master-body'), arrow = $('master-arrow');
-  if (body && !body.classList.contains('open')) {
-    body.classList.add('open');
-    if (arrow) arrow.textContent = '▲';
-    renderMasterList();
-  }
-  $('master-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+function closeModal(id) {
+  $(id).classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function openMasterModal() {
+  renderMasterList();
+  openModal('master-modal');
 }
 
 function startEditAddr(cell) {
@@ -635,12 +632,7 @@ function toggleStats() {
   arrow.textContent = open ? '▼' : '▲';
 }
 
-function toggleMasterList() {
-  const b = $('master-body'), a = $('master-arrow');
-  b.classList.toggle('open');
-  a.textContent = b.classList.contains('open') ? '▲' : '▼';
-  if (b.classList.contains('open')) renderMasterList();
-}
+function toggleMasterList() { openMasterModal(); }
 
 function renderMasterList() {
   const tbody = $('master-tbody');
@@ -799,6 +791,7 @@ function submitAdd() {
 const savedDrvs = loadDriversFromStorage();
 (savedDrvs || DEFAULTS).forEach(d => addRow(d.name, d.zones));
 setupDnD();
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModal('drv-modal'); closeModal('master-modal'); } });
 window.addEventListener('load', () => {
   // 저장된 마스터 데이터 복원 (XLSX 불필요 — JSON 직접 파싱)
   const saved = loadMasterFromStorage();
@@ -833,11 +826,7 @@ window.addEventListener('load', () => {
 
 function h(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
-function toggleStg(){
-  const b=$('stg-body'), a=$('stg-arrow');
-  b.classList.toggle('open');
-  a.textContent = b.classList.contains('open') ? '▲' : '▼';
-}
+function toggleStg(){ openModal('drv-modal'); }
 
 function addRow(name='', zones=''){
   const tr = document.createElement('tr');

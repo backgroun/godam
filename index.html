@@ -79,6 +79,7 @@ input[type=file]{display:none}
 .ptbl tr:hover td{background:#f9fafb}
 .ptbl .grp-last td{border-bottom:2px solid #d1d5db}
 .ptbl .grp-inner td{border-bottom:1px dashed #ebebeb}
+.drv-sel{font-size:11px;padding:2px 5px;border:1px solid #d1d5db;border-radius:4px;cursor:pointer;background:#f9fafb;width:100%}
 .zchip{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .no-addr{color:#dc2626;font-style:italic;font-size:12px}
 .addr{font-size:12px;color:#6b7280}
@@ -146,12 +147,22 @@ input[type=file]{display:none}
     </div>
     <input type="file" id="f-m" accept=".xlsx,.xls">
     <div class="up-arr">＋</div>
-    <div class="dz" id="dz-o" onclick="document.getElementById('f-o').click()">
-      <span class="dz-ico">📋</span>
-      <div class="dz-lbl">② 오늘 발주 파일</div>
-      <div class="dz-hint">meatpath_진행주문_날짜.xlsx — 매일 교체</div>
-      <div class="dz-pick">파일 선택</div>
-      <div class="dz-file" id="fn-o"></div>
+    <div class="dz" id="dz-o">
+      <!-- 업로드 상태 -->
+      <div id="o-upload" onclick="document.getElementById('f-o').click()">
+        <span class="dz-ico">📋</span>
+        <div class="dz-lbl">② 발주 파일</div>
+        <div class="dz-hint">meatpath_진행주문_날짜.xlsx — 매일 교체</div>
+        <div class="dz-pick">파일 선택</div>
+        <div class="dz-file" id="fn-o"></div>
+      </div>
+      <!-- 저장됨 상태 -->
+      <div id="o-cached" style="display:none">
+        <span class="dz-ico">✅</span>
+        <div class="dz-cached-info" id="o-cached-cnt"></div>
+        <div class="dz-cached-sub" id="o-cached-sub"></div>
+        <button class="dz-update-btn" onclick="event.stopPropagation();openOrderPicker()">파일 교체</button>
+      </div>
     </div>
     <input type="file" id="f-o" accept=".xlsx,.xls">
   </div>
@@ -236,10 +247,12 @@ const DEFAULTS = [
   {name:'기사5', zones:'인천권, 원거리'},
 ];
 
-let masterLookup = null, orders = null, plan = null, specialPlan = [], secondaryPlan = [], dlDate = '';
+let masterLookup = null, orders = null, plan = null, specialPlan = [], secondaryPlan = [], dlDate = '', currentCfg = [];
 
-const LS_DATA = 'bp_master_v1';
-const LS_META = 'bp_master_meta_v1';
+const LS_DATA   = 'bp_master_v1';
+const LS_META   = 'bp_master_meta_v1';
+const LS_ORDERS = 'bp_orders_v1';
+const LS_ORDERS_META = 'bp_orders_meta_v1';
 
 function saveMaster(lookup, filename) {
   try {
@@ -278,6 +291,48 @@ function showUploadMaster() {
 
 function openMasterPicker() {
   document.getElementById('f-m').click();
+}
+
+function saveOrders(data, filename, date) {
+  try {
+    localStorage.setItem(LS_ORDERS, JSON.stringify(data));
+    localStorage.setItem(LS_ORDERS_META, JSON.stringify({ filename, count: data.length, date }));
+  } catch(e) {}
+}
+
+function loadOrdersFromStorage() {
+  try {
+    const data = localStorage.getItem(LS_ORDERS);
+    const meta = localStorage.getItem(LS_ORDERS_META);
+    if (data && meta) return { orders: JSON.parse(data), meta: JSON.parse(meta) };
+  } catch(e) {}
+  return null;
+}
+
+function showCachedOrders(meta) {
+  $('dz-o').classList.add('cached');
+  $('o-upload').style.display = 'none';
+  $('o-cached').style.display = 'block';
+  $('o-cached-cnt').textContent = `${meta.date} 발주파일 (${meta.count.toLocaleString()}건)`;
+  $('o-cached-sub').innerHTML = h(meta.filename);
+}
+
+function showUploadOrders() {
+  $('dz-o').classList.remove('cached', 'done');
+  $('o-cached').style.display = 'none';
+  $('o-upload').style.display = 'block';
+  $('fn-o').innerHTML = '';
+}
+
+function openOrderPicker() {
+  document.getElementById('f-o').click();
+}
+
+function reassign(name, newDriver) {
+  plan.forEach(o => { if (o.거래처명 === name) o.담당기사 = newDriver; });
+  const sy = window.scrollY;
+  renderResults(currentCfg);
+  window.scrollTo(0, sy);
 }
 
 function toggleAddForm() {
@@ -328,8 +383,15 @@ window.addEventListener('load', () => {
   if (saved) {
     masterLookup = saved.lookup;
     showCachedMaster(saved.meta);
-    $('gen-btn').disabled = !orders; // 발주만 있으면 바로 활성화
   }
+  // 저장된 발주 데이터 복원
+  const savedOrders = loadOrdersFromStorage();
+  if (savedOrders) {
+    orders = savedOrders.orders;
+    dlDate = savedOrders.meta.date;
+    showCachedOrders(savedOrders.meta);
+  }
+  $('gen-btn').disabled = !(masterLookup && orders);
 });
 
 function h(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -379,7 +441,9 @@ function handleFile(file, type){
       } else {
         const r = parseOrders(wb);
         orders = r.orders; dlDate = r.date;
-        markDone('dz-o','fn-o', file.name, r.orders.length + '개 주문 로드됨');
+        const oDate = dlDate || new Date().toLocaleDateString('ko-KR');
+        saveOrders(orders, file.name, oDate);
+        showCachedOrders({ filename: file.name, count: orders.length, date: oDate });
       }
       $('gen-btn').disabled = !(masterLookup && orders);
     } catch(err){ alert('파일 읽기 오류: ' + err.message); showUploadMaster(); }
@@ -440,7 +504,7 @@ function getDriver(zone, cfg){
   return '미배정';
 }
 
-function makePanelHTML(rows, showDrv) {
+function makePanelHTML(rows, showDrv, showReassign) {
   const map = new Map();
   rows.forEach(o => {
     if (!map.has(o.거래처명)) map.set(o.거래처명, { meta: o, items: [] });
@@ -448,13 +512,19 @@ function makePanelHTML(rows, showDrv) {
   });
   const groups = [...map.values()];
   const drvTh = showDrv ? `<th style="width:120px">담당기사</th>` : '';
-  const hdr = `<th style="width:34px">#</th><th style="width:95px">구역</th>${drvTh}<th style="width:155px">거래처명</th><th>배송주소</th><th>품목명</th><th style="width:50px">수량</th><th style="width:55px">구분</th><th>비고</th>`;
+  const raTh = showReassign ? `<th style="width:80px">배정변경</th>` : '';
+  const hdr = `<th style="width:34px">#</th><th style="width:95px">구역</th>${drvTh}<th style="width:155px">거래처명</th><th>배송주소</th><th>품목명</th><th style="width:50px">수량</th><th style="width:55px">구분</th><th>비고</th>${raTh}`;
   let seq = 0;
   const body = groups.map(({ meta: o, items }) => {
     seq++;
     const n = items.length;
     const rs = n > 1 ? ` rowspan="${n}"` : '';
     const drvCell = showDrv ? `<td style="text-align:center"${rs}>${h(o.담당기사)}</td>` : '';
+    const drvOpts = showReassign ? [...currentCfg.map(d=>d.name),'미배정']
+      .map(d=>`<option value="${h(d)}"${o.담당기사===d?' selected':''}>${h(d)}</option>`).join('') : '';
+    const raCell = showReassign
+      ? `<td style="vertical-align:middle"${rs}><select class="drv-sel" data-name="${h(o.거래처명)}" onchange="reassign(this.dataset.name,this.value)">${drvOpts}</select></td>`
+      : '';
     return items.map((item, idx) => {
       const isLast = idx === n - 1;
       const cls = n > 1 ? (isLast ? ' class="grp-last"' : ' class="grp-inner"') : '';
@@ -469,6 +539,7 @@ function makePanelHTML(rows, showDrv) {
           <td style="text-align:center">${h(item.수량)}</td>
           <td style="text-align:center">${h(item.구분)}</td>
           <td class="note"${rs}>${[o.비고1,o.비고2].filter(Boolean).map(h).join(' / ')}</td>
+          ${raCell}
         </tr>`;
       }
       return `<tr${cls}>
@@ -483,6 +554,7 @@ function makePanelHTML(rows, showDrv) {
 
 function generate(){
   const cfg = getDriverCfg();
+  currentCfg = cfg;
   const allRows = orders.map(o => {
     const name = String(o['거래처명']).trim();
     const addr = masterLookup[name] || null;
@@ -575,7 +647,7 @@ function renderResults(cfg){
     const panelAll = document.createElement('div');
     panelAll.className = 'tab-panel';
     panelAll.id = 'tab_all';
-    panelAll.innerHTML = makePanelHTML(fullList, true);
+    panelAll.innerHTML = makePanelHTML(fullList, true, true);
     tp.appendChild(panelAll);
   }
 
@@ -602,7 +674,7 @@ function renderResults(cfg){
     panel.id = sid;
 
     const sorted = [...sub].sort((a,b)=>a.구역.localeCompare(b.구역)||a.거래처명.localeCompare(b.거래처명));
-    panel.innerHTML = makePanelHTML(sorted, false);
+    panel.innerHTML = makePanelHTML(sorted, false, true);
     tp.appendChild(panel);
   });
 

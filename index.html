@@ -859,7 +859,7 @@ function handleFile(file, type){
   const reader = new FileReader();
   reader.onload = e => {
     try {
-      const wb = XLSX.read(new Uint8Array(e.target.result), {type:'array', raw:false});
+      const wb = XLSX.read(new Uint8Array(e.target.result), {type:'array', raw:false, cellStyles:true});
       if (type === 'master'){
         masterLookup = parseMaster(wb);
         saveMaster(masterLookup, file.name);
@@ -906,11 +906,40 @@ function flexCol(row, candidates){
 
 function parseOrders(wb){
   const ws = wb.Sheets[wb.SheetNames[0]];
-  const rows = XLSX.utils.sheet_to_json(ws, {defval:null, raw:false});
-  const orders = rows.filter(r => {
-    const n = r['거래처명'];
-    return n && String(n).trim() && !['nan','null','undefined'].includes(String(n).trim().toLowerCase());
-  });
+  const allRows = XLSX.utils.sheet_to_json(ws, {header:1, defval:null, raw:false});
+  if (!allRows.length) return {orders:[], date:''};
+  // 헤더 행 탐색 (거래처명 포함된 첫 행)
+  let hi = 0;
+  for (let i = 0; i < Math.min(allRows.length, 5); i++) {
+    if ((allRows[i]||[]).some(c => String(c||'').trim() === '거래처명')) { hi = i; break; }
+  }
+  const hdrs = (allRows[hi]||[]).map(c => String(c||'').trim());
+  const nameCol = hdrs.indexOf('거래처명');
+  const orders = [];
+  for (let i = hi + 1; i < allRows.length; i++) {
+    const row = allRows[i] || [];
+    const obj = {};
+    hdrs.forEach((hdr, ci) => { if (hdr) obj[hdr] = row[ci] != null ? row[ci] : null; });
+    const n = obj['거래처명'];
+    if (!n || !String(n).trim() || ['nan','null','undefined'].includes(String(n).trim().toLowerCase())) continue;
+    obj._rowIdx = i;
+    // 셀 색상 읽기 (배경색, 글자색)
+    const cellRef = XLSX.utils.encode_cell({r: i, c: nameCol >= 0 ? nameCol : 0});
+    const cell = ws[cellRef];
+    if (cell && cell.s) {
+      const fg = cell.s.fgColor;
+      if (fg && fg.rgb) {
+        const rgb = (fg.rgb.length > 6 ? fg.rgb.slice(-6) : fg.rgb).toUpperCase();
+        if (!/^F{6}$/.test(rgb) && !/^0{6}$/.test(rgb)) obj._bg = '#' + rgb;
+      }
+      const fc = cell.s.font && cell.s.font.color;
+      if (fc && fc.rgb) {
+        const rgb = (fc.rgb.length > 6 ? fc.rgb.slice(-6) : fc.rgb).toUpperCase();
+        if (!/^0{6}$/.test(rgb) && !/^F{6}$/.test(rgb)) obj._font = '#' + rgb;
+      }
+    }
+    orders.push(obj);
+  }
   let date = new Date().toISOString().slice(0,10).replace(/-/g,'');
   if (orders.length){
     const dv = orders[0]['납기일'];
@@ -936,7 +965,7 @@ function makePanelHTML(rows, showDrv, showReassign, showAddr = true, allowAddrAd
   const map = new Map();
   rows.forEach(o => {
     if (!map.has(o.거래처명)) map.set(o.거래처명, { meta: o, items: [] });
-    map.get(o.거래처명).items.push({ 품목명: String(o.품목명||''), 수량: String(o.수량||''), 구분: String(o.구분||'') });
+    map.get(o.거래처명).items.push({ 품목명: String(o.품목명||''), 수량: String(o.수량||''), 구분: String(o.구분||''), _bg: o._bg||null, _font: o._font||null });
   });
   const groups = [...map.values()];
   const drvTh = showDrv ? `<th>담당기사</th>` : '';
@@ -948,8 +977,9 @@ function makePanelHTML(rows, showDrv, showReassign, showAddr = true, allowAddrAd
     seq++;
     const n = items.length;
     const rs = n > 1 ? ` rowspan="${n}"` : '';
-    const bg = seq % 2 === 1 ? '#141414' : '#202020';
-    const bgStyle = `background:${bg}`;
+    const stripeBg = seq % 2 === 1 ? '#141414' : '#202020';
+    const bg = items[0]._bg || stripeBg;
+    const bgStyle = `background:${bg}${items[0]._font ? `;color:${items[0]._font}` : ''}`;
     const drvShort = o.담당기사 ? o.담당기사.split(' ')[0] : '';
     const drvCell = showDrv ? `<td style="${bgStyle};text-align:center"${rs}>${h(drvShort)}</td>` : '';
     const drvOpts = showReassign ? [...currentCfg.map(d=>d.name),'택배','미배정']
@@ -960,6 +990,8 @@ function makePanelHTML(rows, showDrv, showReassign, showAddr = true, allowAddrAd
     return items.map((item, idx) => {
       const isLast = idx === n - 1;
       const cls = n > 1 ? (isLast ? ' class="grp-last"' : ' class="grp-inner"') : '';
+      const iBg = item._bg || stripeBg;
+      const iStyle = `background:${iBg}${item._font ? `;color:${item._font}` : ''}`;
       if (idx === 0) {
         return `<tr${cls}>
           <td style="${bgStyle};text-align:center;color:#888"${rs}>${seq}</td>
@@ -967,9 +999,9 @@ function makePanelHTML(rows, showDrv, showReassign, showAddr = true, allowAddrAd
           ${drvCell}
           <td class="cust" style="${bgStyle}"${rs}>${h(o.거래처명)}</td>
           ${raCell}
-          <td style="${bgStyle}">${h(item.품목명)}</td>
-          <td style="${bgStyle};text-align:center">${h(item.수량)}</td>
-          <td style="${bgStyle};text-align:center">${h(item.구분)}</td>
+          <td style="${iStyle}">${h(item.품목명)}</td>
+          <td style="${iStyle};text-align:center">${h(item.수량)}</td>
+          <td style="${iStyle};text-align:center">${h(item.구분)}</td>
           <td class="note" style="${bgStyle}"${rs}>${[o.비고1,o.비고2].filter(Boolean).map(h).join(' / ')}</td>
           ${showAddr ? (o.배송주소
             ? `<td class="addr-edit" style="${bgStyle}" ${rs} data-name="${h(o.거래처명)}" data-addr="${h(o.배송주소)}" onclick="startEditAddr(this)">${h(o.배송주소)}</td>`
@@ -980,9 +1012,9 @@ function makePanelHTML(rows, showDrv, showReassign, showAddr = true, allowAddrAd
         </tr>`;
       }
       return `<tr${cls}>
-          <td style="${bgStyle}">${h(item.품목명)}</td>
-          <td style="${bgStyle};text-align:center">${h(item.수량)}</td>
-          <td style="${bgStyle};text-align:center">${h(item.구분)}</td>
+          <td style="${iStyle}">${h(item.품목명)}</td>
+          <td style="${iStyle};text-align:center">${h(item.수량)}</td>
+          <td style="${iStyle};text-align:center">${h(item.구분)}</td>
         </tr>`;
     }).join('');
   }).join('');
@@ -1002,6 +1034,8 @@ function generate(){
       품목명: o['품목명']||'', 수량: o['수량']||'',
       구분: o['구분']||'', 비고1: o['비고1']||'', 비고2: o['비고2']||'',
       납기일: o['납기일'] ? String(o['납기일']).slice(0,10) : '',
+      _rowIdx: o._rowIdx != null ? o._rowIdx : 0,
+      _bg: o._bg || null, _font: o._font || null,
     };
   });
   const isSpecial = o => (String(o.거래처명)+String(o.품목명)).includes('능동미나리');
@@ -1050,7 +1084,7 @@ function renderResults(cfg){
 
 
   // 전체 리스트 탭 (2차 제외)
-  const fullList = [...plan, ...specialPlan].sort((a,b)=>a.구역.localeCompare(b.구역)||a.거래처명.localeCompare(b.거래처명));
+  const fullList = [...plan, ...specialPlan, ...secondaryPlan].sort((a,b)=>(a._rowIdx||0)-(b._rowIdx||0));
   if (fullList.length) {
     const btnAll = document.createElement('button');
     btnAll.className = 'tab-btn';

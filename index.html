@@ -90,7 +90,7 @@ input[type=file]{display:none}
 .dl-btn{background:#16a34a;color:#fff}
 .dl-btn:hover{background:#15803d}
 /* driver bg colors */
-.c1{background:#ea580c}.c2{background:#16a34a}.c3{background:#1d4ed8}.c4{background:#7c3aed}.c5{background:#be185d}.cmiss{background:#b91c1c}.cspecial{background:#0891b2}
+.c1{background:#ea580c}.c2{background:#16a34a}.c3{background:#1d4ed8}.c4{background:#7c3aed}.c5{background:#be185d}.cmiss{background:#b91c1c}.cspecial{background:#0891b2}.c2nd{background:#b45309}
 /* PRINT */
 @media print{
   body{background:#fff}
@@ -228,12 +228,13 @@ const DRV_CLR = ['c1','c2','c3','c4','c5','c5'];
 
 const DEFAULTS = [
   {name:'기사1', zones:'강남권, 서울중부권'},
-  {name:'기사2', zones:'강북권, 서울서부권, 경기동북권'},
-  {name:'기사3', zones:'경기동부권, 경기남부권'},
-  {name:'기사4', zones:'경기서부권, 인천권, 원거리'},
+  {name:'기사2', zones:'강북권, 서울서부권'},
+  {name:'기사3', zones:'경기동북권, 경기동부권'},
+  {name:'기사4', zones:'경기남부권, 경기서부권'},
+  {name:'기사5', zones:'인천권, 원거리'},
 ];
 
-let masterLookup = null, orders = null, plan = null, specialPlan = [], dlDate = '';
+let masterLookup = null, orders = null, plan = null, specialPlan = [], secondaryPlan = [], dlDate = '';
 
 const LS_DATA = 'bp_master_v1';
 const LS_META = 'bp_master_meta_v1';
@@ -452,8 +453,10 @@ function generate(){
     };
   });
   const isSpecial = o => (String(o.거래처명)+String(o.품목명)).includes('능동미나리');
+  const isSecondary = o => (String(o.거래처명)+String(o.품목명)).includes('2차');
   specialPlan = allRows.filter(isSpecial);
-  plan = allRows.filter(o => !isSpecial(o));
+  secondaryPlan = allRows.filter(o => !isSpecial(o) && isSecondary(o));
+  plan = allRows.filter(o => !isSpecial(o) && !isSecondary(o));
   renderResults(cfg);
   $('results').style.display='block';
   $('results').scrollIntoView({behavior:'smooth', block:'start'});
@@ -480,6 +483,17 @@ function renderResults(cfg){
       ${d ? `<div class="zns">${d.zones.join(' · ')}</div>` : ''}`;
     sg.appendChild(div);
   });
+
+  // 2차 별도 카드
+  if (secondaryPlan.length) {
+    const s2Qty = secondaryPlan.reduce((s,o)=>s+(parseFloat(o.수량)||0),0);
+    const s2Div = document.createElement('div');
+    s2Div.className = 'sc c2nd';
+    s2Div.innerHTML = `<div class="drv">2차 (별도)</div>
+      <div class="big">${secondaryPlan.length}</div>
+      <div class="lbl">건 · ${s2Qty.toFixed(0)}개</div>`;
+    sg.appendChild(s2Div);
+  }
 
   // 능동미나리 별도 카드
   if (specialPlan.length) {
@@ -542,6 +556,44 @@ function renderResults(cfg){
     tp.appendChild(panel);
   });
 
+  // 2차 별도 탭
+  if (secondaryPlan.length) {
+    const btn2 = document.createElement('button');
+    btn2.className = 'tab-btn';
+    btn2.textContent = `2차 별도 (${secondaryPlan.length})`;
+    btn2.style.borderBottomColor = '#b45309';
+    btn2.onclick = () => {
+      document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+      btn2.classList.add('active');
+      $('tab_secondary').classList.add('active');
+    };
+    tabs.appendChild(btn2);
+
+    const panel2 = document.createElement('div');
+    panel2.className = 'tab-panel';
+    panel2.id = 'tab_secondary';
+    const sorted2 = [...secondaryPlan].sort((a,b)=>a.거래처명.localeCompare(b.거래처명));
+    panel2.innerHTML = `<table class="ptbl"><thead><tr>
+      <th style="width:34px">#</th><th style="width:95px">구역</th>
+      <th style="width:155px">거래처명</th><th>배송주소</th>
+      <th>품목명</th><th style="width:50px">수량</th>
+      <th style="width:55px">구분</th><th>비고</th>
+    </tr></thead><tbody>
+    ${sorted2.map((o,i)=>`<tr>
+      <td style="text-align:center;color:#9ca3af">${i+1}</td>
+      <td><span class="zchip" style="${ZONE_STYLE[o.구역]||ZONE_STYLE['기타']}">${h(o.구역)}</span></td>
+      <td class="cust">${h(o.거래처명)}</td>
+      <td class="addr">${o.배송주소 ? h(o.배송주소) : '<span class="no-addr">주소 없음</span>'}</td>
+      <td>${h(o.품목명)}</td>
+      <td style="text-align:center">${h(String(o.수량))}</td>
+      <td style="text-align:center">${h(String(o.구분))}</td>
+      <td class="note">${[o.비고1,o.비고2].filter(Boolean).map(h).join(' / ')}</td>
+    </tr>`).join('')}
+    </tbody></table>`;
+    tp.appendChild(panel2);
+  }
+
   // 능동미나리 별도 탭
   if (specialPlan.length) {
     const spIdx = drvList.length;
@@ -600,6 +652,15 @@ function dlExcel(){
   const ws1 = XLSX.utils.aoa_to_sheet(rows);
   ws1['!cols']=[{wch:5},{wch:10},{wch:12},{wch:22},{wch:40},{wch:28},{wch:7},{wch:8},{wch:20},{wch:20},{wch:12}];
   XLSX.utils.book_append_sheet(wb, ws1, '배송플랜');
+
+  if (secondaryPlan.length) {
+    const s2Rows = [['#','구역','거래처명','배송주소','품목명','수량','구분','비고1','비고2','납기일']];
+    [...secondaryPlan].sort((a,b)=>a.거래처명.localeCompare(b.거래처명))
+      .forEach((o,i)=>s2Rows.push([i+1,o.구역,o.거래처명,o.배송주소,o.품목명,o.수량,o.구분,o.비고1,o.비고2,o.납기일]));
+    const wsS2 = XLSX.utils.aoa_to_sheet(s2Rows);
+    wsS2['!cols']=[{wch:5},{wch:12},{wch:22},{wch:40},{wch:28},{wch:7},{wch:8},{wch:20},{wch:20},{wch:12}];
+    XLSX.utils.book_append_sheet(wb, wsS2, '2차_별도');
+  }
 
   if (specialPlan.length) {
     const spRows = [['#','구역','거래처명','배송주소','품목명','수량','구분','비고1','비고2','납기일']];

@@ -74,8 +74,9 @@ input[type=file]{display:none}
 .sc .big{font-size:30px;font-weight:900;line-height:1}
 .sc .zns{font-size:11px;opacity:.85;margin-top:7px;line-height:1.6}
 /* TABS */
-.tabs{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:0}
-.tab-btn{padding:11px 22px;border:1px solid #2e2e2e;border-bottom:none;border-radius:10px 10px 0 0;cursor:pointer;font-size:14px;font-weight:700;background:#181818;color:#999;transition:.12s}
+.tabs{display:flex;gap:3px;flex-wrap:nowrap;overflow-x:auto;margin-bottom:0;padding-bottom:1px;-webkit-overflow-scrolling:touch}
+.tabs::-webkit-scrollbar{height:0}
+.tab-btn{padding:9px 16px;border:1px solid #2e2e2e;border-bottom:none;border-radius:10px 10px 0 0;cursor:pointer;font-size:13px;font-weight:700;background:#181818;color:#999;transition:.12s;white-space:nowrap;flex-shrink:0}
 .tab-btn:hover{color:#ddd;background:#222}
 .tab-btn.active{background:#0d0d0d;color:#fff;border-color:#666;margin-bottom:-1px;z-index:1;position:relative}
 .tab-panel{background:#0d0d0d;border:1px solid #2e2e2e;border-radius:0 10px 10px 10px;padding:16px;margin-bottom:16px;display:none;overflow-x:auto}

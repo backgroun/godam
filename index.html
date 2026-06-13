@@ -1229,51 +1229,60 @@ function makePanelHTML(rows, showDrv, showReassign, showAddr = true, allowAddrAd
   const body = groups.map(({ meta: o, items }) => {
     seq++;
     const n = items.length;
-    const rs = n > 1 ? ` rowspan="${n}"` : '';
     const stripe = seq % 2 === 1
       ? (isAll ? '#ffffff' : '#141414')
       : (isAll ? '#f9fafb' : '#202020');
-    const grpText = isAll ? '#111111' : null;
-    const grpStyle = `background:${stripe}${grpText ? `;color:${grpText}` : ''}`;
-    const drvShort = o.담당기사 ? o.담당기사.split(' ')[0] : '';
-    const drvCell = showDrv ? `<td style="${grpStyle};text-align:center"${rs}>${h(drvShort)}</td>` : '';
     const drvOpts = showReassign ? [...currentCfg.map(d=>d.name),'택배','미배정']
       .map(d=>`<option value="${h(d)}"${o.담당기사===d?' selected':''}>${h(d)}</option>`).join('') : '';
-    const raCell = showReassign
-      ? `<td style="${grpStyle};vertical-align:top;padding-top:10px"${rs}><select class="drv-sel" data-name="${h(o.거래처명)}" onchange="reassign(this.dataset.name,this.value)">${drvOpts}</select></td>`
-      : '';
     return items.map((item, idx) => {
       const isLast = idx === n - 1;
       const cls = n > 1 ? (isLast ? ' class="grp-last"' : ' class="grp-inner"') : '';
+      // 각 행의 배경/폰트는 해당 item 기준으로 결정
       const iBg = item._bg || stripe;
       const iText = item._font || (item._bg ? autoTextColor(item._bg) : (isAll ? '#111111' : null));
-      const iStyle = `background:${iBg}${iText ? `;color:${iText}` : ''}`;
+      const s = `background:${iBg}${iText ? `;color:${iText}` : ''}`;
       const note = [item.비고1, item.비고2].filter(Boolean).map(h).join(' / ');
       if (idx === 0) {
+        // 첫 번째 행: 모든 정보 표시. rowspan 없음 — 각 행이 독립적으로 전체 배경색 적용
+        const drvShort = o.담당기사 ? o.담당기사.split(' ')[0] : '';
+        const drvCell = showDrv ? `<td style="${s};text-align:center">${h(drvShort)}</td>` : '';
+        const raCell = showReassign
+          ? `<td style="${s};vertical-align:top;padding-top:10px"><select class="drv-sel" data-name="${h(o.거래처명)}" onchange="reassign(this.dataset.name,this.value)">${drvOpts}</select></td>`
+          : '';
         const addrCell = showAddr ? (o.배송주소
-          ? `<td class="addr-edit" style="${grpStyle}" ${rs} data-name="${h(o.거래처명)}" data-addr="${h(o.배송주소)}" onclick="startEditAddr(this)">${h(o.배송주소)}</td>`
+          ? `<td class="addr-edit" style="${s}" data-name="${h(o.거래처명)}" data-addr="${h(o.배송주소)}" onclick="startEditAddr(this)">${h(o.배송주소)}</td>`
           : allowAddrAdd
-            ? `<td style="${grpStyle}" ${rs} data-name="${h(o.거래처명)}" onclick="openAddrSearch(this)"><span class="no-addr">+ 주소 검색</span></td>`
-            : `<td style="${grpStyle}" ${rs}></td>`
+            ? `<td style="${s}" data-name="${h(o.거래처명)}" onclick="openAddrSearch(this)"><span class="no-addr">+ 주소 검색</span></td>`
+            : `<td style="${s}"></td>`
         ) : '';
         return `<tr${cls}>
-          <td style="${grpStyle};text-align:center;color:#888"${rs}>${seq}</td>
-          <td style="${grpStyle}"${rs}><span class="zchip" style="${ZONE_STYLE[o.구역]||ZONE_STYLE['기타']}">${h(o.구역)}</span></td>
+          <td style="${s};text-align:center;color:#888">${seq}</td>
+          <td style="${s}"><span class="zchip" style="${ZONE_STYLE[o.구역]||ZONE_STYLE['기타']}">${h(o.구역)}</span></td>
           ${drvCell}
-          <td class="cust" style="${grpStyle}"${rs}>${custDisplay(o.거래처명)}</td>
+          <td class="cust" style="${s}">${custDisplay(o.거래처명)}</td>
           ${raCell}
-          <td style="${iStyle}">${h(item.품목명)}</td>
-          <td style="${iStyle};text-align:center">${h(item.수량)}</td>
-          <td style="${iStyle};text-align:center">${h(item.구분)}</td>
-          <td class="note" style="${iStyle}">${note}</td>
+          <td style="${s}">${h(item.품목명)}</td>
+          <td style="${s};text-align:center">${h(item.수량)}</td>
+          <td style="${s};text-align:center">${h(item.구분)}</td>
+          <td class="note" style="${s}">${note}</td>
           ${addrCell}
         </tr>`;
       }
+      // 2번째 행부터: 구역/기사/거래처명/배정변경/주소 칸은 비우되 동일 배경색 적용 → 전체 행이 같은 색
+      const drvCell = showDrv ? `<td style="${s}"></td>` : '';
+      const raCell = showReassign ? `<td style="${s}"></td>` : '';
+      const addrCell = showAddr ? `<td style="${s}"></td>` : '';
       return `<tr${cls}>
-          <td style="${iStyle}">${h(item.품목명)}</td>
-          <td style="${iStyle};text-align:center">${h(item.수량)}</td>
-          <td style="${iStyle};text-align:center">${h(item.구분)}</td>
-          <td class="note" style="${iStyle}">${note}</td>
+          <td style="${s}"></td>
+          <td style="${s}"></td>
+          ${drvCell}
+          <td style="${s}"></td>
+          ${raCell}
+          <td style="${s}">${h(item.품목명)}</td>
+          <td style="${s};text-align:center">${h(item.수량)}</td>
+          <td style="${s};text-align:center">${h(item.구분)}</td>
+          <td class="note" style="${s}">${note}</td>
+          ${addrCell}
         </tr>`;
     }).join('');
   }).join('');

@@ -341,6 +341,7 @@ button:not(:disabled):active{transform:scale(0.95)!important;transition:transfor
     <div class="modal-hdr" style="flex-wrap:wrap;gap:6px">
       <span>🗺 배송지 지도</span>
       <div id="map-legend" style="display:flex;gap:6px;flex-wrap:wrap;flex:1;padding:0 8px;align-items:center;min-height:24px"></div>
+      <button class="share-btn" onclick="clearGeoCache()" title="주소 캐시 초기화 후 재조회" style="font-size:12px;padding:4px 10px;white-space:nowrap">🔄 캐시초기화</button>
       <button class="modal-close" onclick="closeModal('map-modal')">✕</button>
     </div>
     <div id="kakao-map" style="width:100%;height:66vh;min-height:380px;background:#1a1a1a;display:flex;align-items:center;justify-content:center;color:#888"></div>
@@ -692,6 +693,11 @@ function loadGeoCache() {
 function saveGeoCache(cache) {
   try { localStorage.setItem(LS_GEOCACHE, JSON.stringify(cache)); } catch(e) {}
 }
+function clearGeoCache() {
+  try { localStorage.removeItem(LS_GEOCACHE); } catch(e) {}
+  showToast('주소 캐시 초기화 완료 — 재조회 중...', '#3b82f6');
+  initMap();
+}
 
 function openMapView(drvFilter) {
   mapDrvFilter = drvFilter || null;
@@ -777,35 +783,50 @@ function initMap() {
   prog.textContent = `0/${needFetch.length} 주소 변환 중...`;
   container.appendChild(prog);
 
-  let done = 0, qIdx = 0;
+  let done = 0, qIdx = 0, errCount = 0;
   const CONCURRENCY = 5;
+
+  function kakaoGeoFetch(endpoint, addr) {
+    return fetch(`https://dapi.kakao.com/v2/local/${endpoint}.json?query=${encodeURIComponent(addr)}&size=1`, {
+      headers: { 'Authorization': `KakaoAK ${KAKAO_REST_KEY}` }
+    }).then(r => {
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return r.json();
+    }).then(data => data?.documents?.[0] || null);
+  }
 
   function geocodeOne() {
     if (qIdx >= needFetch.length) return;
     const [addr, info] = needFetch[qIdx++];
 
-    fetch(`https://dapi.kakao.com/v2/local/search/address.json?query=${encodeURIComponent(addr)}&size=1`, {
-      headers: { 'Authorization': `KakaoAK ${KAKAO_REST_KEY}` }
-    })
-    .then(r => r.json())
-    .then(data => {
-      const doc = data?.documents?.[0];
+    kakaoGeoFetch('search/address', addr)
+    .then(doc => doc || kakaoGeoFetch('search/keyword', addr))
+    .then(doc => {
       if (doc) {
         const lat = parseFloat(doc.y), lng = parseFloat(doc.x);
         cache[addr] = { lat, lng };
         addMarker(addr, info, lat, lng);
         if (bounds.length) _leafletMap.fitBounds(bounds, { padding: [40, 40] });
+      } else {
+        errCount++;
+        console.warn('[지도] 주소 변환 실패:', addr);
       }
     })
-    .catch(() => {})
+    .catch(err => {
+      errCount++;
+      console.error('[지도] 지오코딩 오류:', addr, err.message);
+    })
     .finally(() => {
       done++;
       if (done >= needFetch.length) {
         saveGeoCache(cache);
-        prog.textContent = `완료 (${bounds.length}개 표시)`;
-        setTimeout(() => prog.remove(), 1500);
+        const errMsg = errCount > 0 ? `, ${errCount}개 실패` : '';
+        prog.textContent = `완료 (${bounds.length}개 표시${errMsg})`;
+        if (errCount > 0) prog.style.background = 'rgba(180,30,30,.85)';
+        setTimeout(() => prog.remove(), errCount > 0 ? 5000 : 1500);
       } else {
-        prog.textContent = `${done}/${needFetch.length} 주소 변환 중...`;
+        const errMsg = errCount > 0 ? ` [${errCount}실패]` : '';
+        prog.textContent = `${done}/${needFetch.length} 주소 변환 중...${errMsg}`;
         geocodeOne();
       }
     });

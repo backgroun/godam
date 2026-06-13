@@ -27,9 +27,18 @@ body{font-family:'Apple SD Gothic Neo','맑은 고딕',sans-serif;background:#f0
 .dz.done .dz-pick{background:#16a34a}
 .dz-file{margin-top:8px;font-size:11px;font-weight:600;color:#16a34a;line-height:1.5}
 .dz-cached-info{font-size:13px;font-weight:700;color:#15803d;margin-bottom:4px}
-.dz-cached-sub{font-size:11px;color:#6b7280;margin-bottom:12px;line-height:1.6}
-.dz-update-btn{padding:5px 14px;background:#fff;color:#4472C4;border:1px solid #4472C4;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;transition:.15s}
-.dz-update-btn:hover{background:#eff4ff}
+.dz-cached-sub{font-size:11px;color:#6b7280;margin-bottom:10px;line-height:1.6}
+.m-btn-row{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-bottom:0}
+.m-add-btn{padding:5px 12px;background:#fff;color:#16a34a;border:1px solid #16a34a;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;transition:.15s}
+.m-add-btn:hover{background:#f0fdf4}
+.dz-update-btn{padding:5px 12px;background:#fff;color:#6b7280;border:1px solid #d1d5db;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;transition:.15s}
+.dz-update-btn:hover{background:#f9fafb}
+.m-add-form{margin-top:10px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px 12px;text-align:left}
+.m-add-form input{display:block;width:100%;padding:5px 8px;border:1px solid #d1d5db;border-radius:5px;font:inherit;font-size:12px;margin-bottom:6px;background:#fff}
+.m-add-form input:focus{outline:none;border-color:#16a34a}
+.m-add-form-btns{display:flex;gap:6px;justify-content:flex-end}
+.m-cancel-btn{padding:4px 12px;background:#fff;color:#6b7280;border:1px solid #d1d5db;border-radius:5px;font-size:12px;cursor:pointer}
+.m-submit-btn{padding:4px 12px;background:#16a34a;color:#fff;border:none;border-radius:5px;font-size:12px;font-weight:600;cursor:pointer}
 input[type=file]{display:none}
 /* SETTINGS */
 .stg-hdr{font-size:13px;font-weight:600;color:#4472C4;cursor:pointer;user-select:none;display:flex;align-items:center;gap:6px}
@@ -119,7 +128,18 @@ input[type=file]{display:none}
         <span class="dz-ico">✅</span>
         <div class="dz-cached-info" id="m-cached-cnt"></div>
         <div class="dz-cached-sub" id="m-cached-sub"></div>
-        <button class="dz-update-btn" onclick="event.stopPropagation();openMasterPicker()">다른 파일로 업데이트</button>
+        <div class="m-btn-row">
+          <button class="m-add-btn" onclick="event.stopPropagation();toggleAddForm()">+ 거래처 추가</button>
+          <button class="dz-update-btn" onclick="event.stopPropagation();openMasterPicker()">전체 파일 교체</button>
+        </div>
+        <div class="m-add-form" id="m-add-form" style="display:none" onclick="event.stopPropagation()">
+          <input type="text" id="add-name" placeholder="거래처명 (예: 홍길동정육점)">
+          <input type="text" id="add-addr" placeholder="주소 (예: 서울시 강남구 테헤란로 123)">
+          <div class="m-add-form-btns">
+            <button class="m-cancel-btn" onclick="cancelAdd()">취소</button>
+            <button class="m-submit-btn" onclick="submitAdd()">추가</button>
+          </div>
+        </div>
       </div>
     </div>
     <input type="file" id="f-m" accept=".xlsx,.xls">
@@ -255,6 +275,41 @@ function showUploadMaster() {
 
 function openMasterPicker() {
   document.getElementById('f-m').click();
+}
+
+function toggleAddForm() {
+  const form = $('m-add-form');
+  const visible = form.style.display !== 'none';
+  form.style.display = visible ? 'none' : 'block';
+  if (!visible) $('add-name').focus();
+}
+
+function cancelAdd() {
+  $('m-add-form').style.display = 'none';
+  $('add-name').value = '';
+  $('add-addr').value = '';
+}
+
+function submitAdd() {
+  const name = $('add-name').value.trim();
+  const addr = $('add-addr').value.trim();
+  if (!name) { alert('거래처명을 입력하세요.'); return; }
+  if (!addr) { alert('주소를 입력하세요.'); return; }
+  if (!masterLookup) masterLookup = {};
+  masterLookup[name] = addr;
+  // 메타 업데이트 후 저장
+  const meta = loadMasterFromStorage()?.meta || { filename: '직접입력', date: new Date().toLocaleDateString('ko-KR') };
+  meta.count = Object.keys(masterLookup).length;
+  meta.date = new Date().toLocaleDateString('ko-KR');
+  try {
+    localStorage.setItem(LS_DATA, JSON.stringify(masterLookup));
+    localStorage.setItem(LS_META, JSON.stringify(meta));
+  } catch(e) {}
+  $('m-cached-cnt').textContent = `거래처 마스터 저장됨 (${meta.count.toLocaleString()}개)`;
+  $('m-cached-sub').innerHTML = `${h(meta.filename)}<br>저장일: ${h(meta.date)}`;
+  cancelAdd();
+  $('gen-btn').disabled = !orders;
+  alert(`"${name}" 거래처가 추가되었습니다.`);
 }
 
 // init

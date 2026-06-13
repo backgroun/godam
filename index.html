@@ -1461,10 +1461,9 @@ function renderResults(cfg){
     const sid = 'tab_' + drv.replace(/[^a-zA-Z0-9가-힣]/g,'_');
     const div = document.createElement('div');
     div.className = `sc ${clr}`;
-    div.onclick = () => jumpToTab(sid);
     div.innerHTML = `<div style="position:absolute;top:8px;right:8px;display:flex;gap:4px">
-        <button class="share-btn" onclick="event.stopPropagation();openMapView('${h(drv)}')" title="배송지 지도">🗺</button>
-        <button class="share-btn" onclick="event.stopPropagation();openShareCard('${h(drv)}')" title="배송리스트 저장">📷</button>
+        <button class="share-btn" onclick="openMapView('${h(drv)}')" title="배송지 지도">🗺</button>
+        <button class="share-btn" onclick="openShareCard('${h(drv)}')" title="배송리스트 저장">📷</button>
       </div>
       <div class="drv">${h(drv)}</div>
       <div class="big">${customers}</div>

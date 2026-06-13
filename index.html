@@ -59,10 +59,13 @@ input[type=file]{display:none}
 .save-drv-btn:hover{background:#e0e0e0}
 .zones-ref{font-size:12px;color:#777;margin-top:10px;line-height:1.8}
 /* GENERATE */
-.gen-btn{display:block;width:100%;padding:18px;border:none;border-radius:12px;font-size:18px;font-weight:800;cursor:pointer;transition:.15s;margin-bottom:20px;letter-spacing:-.3px}
+.act-btns{display:flex;gap:8px;margin-bottom:20px}
+.gen-btn{flex:2;display:block;padding:14px 10px;border:none;border-radius:12px;font-size:16px;font-weight:800;cursor:pointer;transition:.15s;letter-spacing:-.3px}
 .gen-btn:not(:disabled){background:#fff;color:#000}
 .gen-btn:not(:disabled):hover{background:#efefef;transform:translateY(-1px);box-shadow:0 6px 24px rgba(255,255,255,.15)}
 .gen-btn:disabled{background:#1a1a1a;color:#666;cursor:not-allowed;border:1px solid #2a2a2a}
+.action-btn{flex:1;padding:14px 8px;border:1px solid #333;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;background:#1a1a1a;color:#bbb;transition:.15s;letter-spacing:-.3px;white-space:nowrap}
+.action-btn:hover{background:#262626;color:#fff;border-color:#555}
 /* RESULTS */
 .sum-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:8px;margin-bottom:16px}
 .sc{padding:14px 16px;border-radius:14px;color:#fff;cursor:pointer;transition:transform .12s,box-shadow .12s}
@@ -145,7 +148,8 @@ input[type=file]{display:none}
   .upload-card{padding:10px 14px}
   .uprow{grid-template-columns:1fr;gap:8px}
   .up-arr{display:none}
-  .gen-btn{font-size:16px;padding:15px}
+  .action-btn{font-size:12px;padding:11px 6px}
+  .gen-btn{font-size:14px;padding:11px}
   .sum-grid{grid-template-columns:repeat(3,1fr);gap:6px}
   .sc{padding:10px 10px;border-radius:10px}
   .sc .drv{font-size:11px}
@@ -298,7 +302,11 @@ input[type=file]{display:none}
 </div>
 
 <!-- GENERATE -->
-<button class="gen-btn" id="gen-btn" disabled onclick="generate()">🗺 배송플랜 생성</button>
+<div class="act-btns">
+  <button class="gen-btn" id="gen-btn" disabled onclick="generate()">🗺 배송플랜 생성</button>
+  <button class="action-btn" onclick="scrollToResults()">🔄 기사 배정 변경</button>
+  <button class="action-btn" onclick="openMasterCard()">📋 거래처 전체 목록</button>
+</div>
 
 <!-- RESULTS -->
 <div id="results" style="display:none">
@@ -459,9 +467,26 @@ function openOrderPicker() {
 
 function reassign(name, newDriver) {
   plan.forEach(o => { if (o.거래처명 === name) o.담당기사 = newDriver; });
+  savePlan();
   const sy = window.scrollY;
   renderResults(currentCfg);
   window.scrollTo(0, sy);
+}
+
+function scrollToResults() {
+  const el = $('results');
+  if (!el || el.style.display === 'none') { alert('먼저 배송플랜을 생성하세요.'); return; }
+  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function openMasterCard() {
+  const body = $('master-body'), arrow = $('master-arrow');
+  if (body && !body.classList.contains('open')) {
+    body.classList.add('open');
+    if (arrow) arrow.textContent = '▲';
+    renderMasterList();
+  }
+  $('master-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function startEditAddr(cell) {
@@ -544,7 +569,22 @@ function savePlan() {
 }
 
 function loadPlanFromStorage() {
-  try { const d = localStorage.getItem(LS_PLAN); if (d) return JSON.parse(d); } catch(e) {}
+  try {
+    const d = localStorage.getItem(LS_PLAN);
+    if (d) {
+      const data = JSON.parse(d);
+      const migrate = arr => (arr||[]).map(o => {
+        let r = {...o};
+        if (r.구역 === '원거리') r.구역 = '택배';
+        if (r.구역 === '택배') r.담당기사 = '택배';
+        return r;
+      });
+      data.plan = migrate(data.plan);
+      data.specialPlan = migrate(data.specialPlan);
+      data.secondaryPlan = migrate(data.secondaryPlan);
+      return data;
+    }
+  } catch(e) {}
   return null;
 }
 
@@ -759,11 +799,7 @@ const savedDrvs = loadDriversFromStorage();
 (savedDrvs || DEFAULTS).forEach(d => addRow(d.name, d.zones));
 setupDnD();
 window.addEventListener('load', () => {
-  if (typeof XLSX === 'undefined') {
-    $('sub-msg').innerHTML = '⚠️ 라이브러리 로딩 실패 — 인터넷 연결 확인 후 새로고침하세요';
-    return;
-  }
-  // 저장된 마스터 데이터 복원
+  // 저장된 마스터 데이터 복원 (XLSX 불필요 — JSON 직접 파싱)
   const saved = loadMasterFromStorage();
   if (saved) {
     masterLookup = saved.lookup;
@@ -787,6 +823,10 @@ window.addEventListener('load', () => {
     dlDate = savedPlan.dlDate || dlDate;
     renderResults(currentCfg);
     $('results').style.display = 'block';
+  }
+  // XLSX 로드 실패 시 업로드 기능만 비활성화 (캐시 뷰는 정상 동작)
+  if (typeof XLSX === 'undefined') {
+    $('sub-msg').innerHTML = '⚠️ 라이브러리 로딩 실패 — 인터넷 연결 확인 후 새로고침하세요';
   }
 });
 
@@ -897,6 +937,7 @@ function getZone(addr){
 }
 
 function getDriver(zone, cfg){
+  if (zone === '택배') return '택배';
   for (const d of cfg) if (d.zones.includes(zone)) return d.name;
   return '미배정';
 }
@@ -924,7 +965,7 @@ function makePanelHTML(rows, showDrv, showReassign, showAddr = true, allowAddrAd
     const drvOpts = showReassign ? [...currentCfg.map(d=>d.name),'택배','미배정']
       .map(d=>`<option value="${h(d)}"${o.담당기사===d?' selected':''}>${h(d)}</option>`).join('') : '';
     const raCell = showReassign
-      ? `<td style="${bgStyle};vertical-align:middle"${rs}><select class="drv-sel" data-name="${h(o.거래처명)}" onchange="reassign(this.dataset.name,this.value)">${drvOpts}</select></td>`
+      ? `<td style="${bgStyle};vertical-align:top;padding-top:10px"${rs}><select class="drv-sel" data-name="${h(o.거래처명)}" onchange="reassign(this.dataset.name,this.value)">${drvOpts}</select></td>`
       : '';
     return items.map((item, idx) => {
       const isLast = idx === n - 1;

@@ -57,13 +57,13 @@ input[type=file]{display:none}
 .gen-btn:not(:disabled):hover{background:#3461b0;transform:translateY(-1px);box-shadow:0 4px 14px rgba(68,114,196,.3)}
 .gen-btn:disabled{background:#9ca3af;cursor:not-allowed}
 /* RESULTS */
-.sum-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:14px}
-.sc{padding:13px 16px;border-radius:12px;color:#fff;cursor:pointer;transition:transform .12s,box-shadow .12s}
+.sum-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:8px;margin-bottom:14px}
+.sc{padding:10px 12px;border-radius:12px;color:#fff;cursor:pointer;transition:transform .12s,box-shadow .12s}
 .sc:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(0,0,0,.18)}
-.sc .drv{font-size:12px;font-weight:600;opacity:.85;margin-bottom:4px}
-.sc .big{font-size:32px;font-weight:900;line-height:1}
-.sc .lbl{font-size:11px;opacity:.75;margin-top:2px}
-.sc .zns{font-size:10px;opacity:.8;margin-top:7px;line-height:1.6}
+.sc .drv{font-size:11px;font-weight:600;opacity:.85;margin-bottom:3px}
+.sc .big{font-size:26px;font-weight:900;line-height:1}
+.sc .lbl{font-size:10px;opacity:.75;margin-top:2px}
+.sc .zns{font-size:10px;opacity:.8;margin-top:5px;line-height:1.5}
 .warn{background:#fffbeb;border:1px solid #f59e0b;border-radius:10px;padding:11px 15px;font-size:13px;color:#92400e;margin-bottom:12px}
 .warn b{display:block;margin-bottom:3px}
 /* TABS */
@@ -75,13 +75,14 @@ input[type=file]{display:none}
 /* TABLE */
 .ptbl{width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed}
 .ptbl th{background:#374151;color:#fff;padding:7px 8px;font-weight:600;white-space:nowrap;text-align:left;overflow:hidden}
-.ptbl td{padding:6px 8px;border-bottom:none;vertical-align:top;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ptbl td{padding:6px 8px;border-bottom:none;vertical-align:top;word-break:break-word;overflow-wrap:break-word}
 .ptbl .grp-last td{border-bottom:2px solid #d1d5db}
 .ptbl .grp-inner td{border-bottom:1px dashed #d1d5db}
 .drv-sel{font-size:11px;padding:2px 4px;border:1px solid #d1d5db;border-radius:4px;cursor:pointer;background:inherit;width:100%}
 .zchip{display:inline-block;padding:2px 7px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-.no-addr{color:#dc2626;font-style:italic;font-size:12px;cursor:pointer}
-.addr-edit{cursor:pointer;color:#6b7280;font-size:12px}
+.no-addr{display:inline-block;color:#4472C4;font-size:11px;cursor:pointer;padding:2px 7px;border:1px dashed #93c5fd;border-radius:4px;background:#f0f9ff}
+.no-addr:hover{background:#dbeafe}
+.addr-edit{cursor:pointer;color:#374151;font-size:12px}
 .addr-edit:hover{background:#eff6ff!important;outline:1px dashed #93c5fd}
 .note{font-size:12px;color:#6b7280}
 .cust{font-weight:700}
@@ -226,6 +227,7 @@ input[type=file]{display:none}
 
 </div>
 <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+<script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
 <script>
 const $ = id => document.getElementById(id);
 
@@ -391,11 +393,34 @@ function filterSearch() {
   const term = ($('search-inp').value || '').trim().toLowerCase();
   const active = document.querySelector('.tab-panel.active');
   if (!active || !tabMeta.has(active.id)) return;
-  const { rows, showDrv, showReassign } = tabMeta.get(active.id);
+  const { rows, showDrv, showReassign, allowAddrAdd = true } = tabMeta.get(active.id);
   const filtered = term
     ? rows.filter(o => o.거래처명.toLowerCase().includes(term) || String(o.품목명||'').toLowerCase().includes(term))
     : rows;
-  active.innerHTML = makePanelHTML(filtered, showDrv, showReassign, !addrHidden);
+  active.innerHTML = makePanelHTML(filtered, showDrv, showReassign, !addrHidden, allowAddrAdd);
+}
+
+function openAddrSearch(cell) {
+  if (typeof daum === 'undefined' || !daum.Postcode) {
+    alert('주소 검색 서비스를 불러오는 중입니다. 잠시 후 다시 시도하세요.');
+    return;
+  }
+  const name = cell.dataset.name;
+  new daum.Postcode({
+    oncomplete: function(data) {
+      const addr = data.roadAddress || data.jibunAddress || data.address;
+      if (!addr) return;
+      masterLookup[name] = addr;
+      const meta = loadMasterFromStorage()?.meta || {};
+      saveMaster(masterLookup, meta.filename || '직접수정');
+      [plan, specialPlan, secondaryPlan].forEach(a => a.forEach(o => {
+        if (o.거래처명 === name) o.배송주소 = addr;
+      }));
+      const sy = window.scrollY;
+      renderResults(currentCfg);
+      window.scrollTo(0, sy);
+    }
+  }).open();
 }
 
 function toggleAddressCol() {
@@ -405,8 +430,8 @@ function toggleAddressCol() {
   btn.classList.toggle('active', addrHidden);
   document.querySelectorAll('.tab-panel').forEach(p => {
     if (!tabMeta.has(p.id)) return;
-    const { rows, showDrv, showReassign } = tabMeta.get(p.id);
-    p.innerHTML = makePanelHTML(rows, showDrv, showReassign, !addrHidden);
+    const { rows, showDrv, showReassign, allowAddrAdd = true } = tabMeta.get(p.id);
+    p.innerHTML = makePanelHTML(rows, showDrv, showReassign, !addrHidden, allowAddrAdd);
   });
 }
 
@@ -578,6 +603,7 @@ function handleFile(file, type){
         showCachedOrders({ filename: file.name, count: orders.length, date: oDate });
       }
       $('gen-btn').disabled = !(masterLookup && orders);
+      if (type !== 'master' && masterLookup && orders) generate();
     } catch(err){ alert('파일 읽기 오류: ' + err.message); showUploadMaster(); }
   };
   reader.readAsArrayBuffer(file);
@@ -636,17 +662,17 @@ function getDriver(zone, cfg){
   return '미배정';
 }
 
-function makePanelHTML(rows, showDrv, showReassign, showAddr = true) {
+function makePanelHTML(rows, showDrv, showReassign, showAddr = true, allowAddrAdd = true) {
   const map = new Map();
   rows.forEach(o => {
     if (!map.has(o.거래처명)) map.set(o.거래처명, { meta: o, items: [] });
     map.get(o.거래처명).items.push({ 품목명: String(o.품목명||''), 수량: String(o.수량||''), 구분: String(o.구분||'') });
   });
   const groups = [...map.values()];
-  const drvTh = showDrv ? `<th style="width:80px">담당기사</th>` : '';
+  const drvTh = showDrv ? `<th style="width:72px">담당기사</th>` : '';
   const raTh = showReassign ? `<th style="width:72px">배정변경</th>` : '';
-  const addrTh = showAddr ? `<th style="width:180px">배송주소</th>` : '';
-  const hdr = `<th style="width:28px">#</th><th style="width:88px">구역</th>${drvTh}<th style="width:130px">거래처명</th>${addrTh}<th>품목명</th><th style="width:42px">수량</th><th style="width:42px">구분</th><th style="width:65px">비고</th>${raTh}`;
+  const addrTh = showAddr ? `<th>배송주소</th>` : '';
+  const hdr = `<th style="width:28px">#</th><th style="width:85px">구역</th>${drvTh}<th style="width:160px">거래처명</th>${addrTh}<th style="width:110px">품목명</th><th style="width:44px">수량</th><th style="width:44px">구분</th><th style="width:175px">비고</th>${raTh}`;
   let seq = 0;
   const body = groups.map(({ meta: o, items }) => {
     seq++;
@@ -669,7 +695,12 @@ function makePanelHTML(rows, showDrv, showReassign, showAddr = true) {
           <td style="${bgStyle}"${rs}><span class="zchip" style="${ZONE_STYLE[o.구역]||ZONE_STYLE['기타']}">${h(o.구역)}</span></td>
           ${drvCell}
           <td class="cust" style="${bgStyle}"${rs}>${h(o.거래처명)}</td>
-          ${showAddr ? `<td class="addr-edit" style="${bgStyle}" ${rs} data-name="${h(o.거래처명)}" data-addr="${h(o.배송주소||'')}" onclick="startEditAddr(this)">${o.배송주소 ? h(o.배송주소) : '<span class="no-addr">+ 주소 추가</span>'}</td>` : ''}
+          ${showAddr ? (o.배송주소
+            ? `<td class="addr-edit" style="${bgStyle}" ${rs} data-name="${h(o.거래처명)}" data-addr="${h(o.배송주소)}" onclick="startEditAddr(this)">${h(o.배송주소)}</td>`
+            : allowAddrAdd
+              ? `<td style="${bgStyle}" ${rs} data-name="${h(o.거래처명)}" onclick="openAddrSearch(this)"><span class="no-addr">+ 주소 검색</span></td>`
+              : `<td style="${bgStyle}" ${rs}></td>`
+          ) : ''}
           <td style="${bgStyle}">${h(item.품목명)}</td>
           <td style="${bgStyle};text-align:center">${h(item.수량)}</td>
           <td style="${bgStyle};text-align:center">${h(item.구분)}</td>
@@ -745,30 +776,6 @@ function renderResults(cfg){
       ${d ? `<div class="zns">${d.zones.join(' · ')}</div>` : ''}`;
     sg.appendChild(div);
   });
-
-  // 2차 별도 카드
-  if (secondaryPlan.length) {
-    const s2Qty = secondaryPlan.reduce((s,o)=>s+(parseFloat(o.수량)||0),0);
-    const s2Div = document.createElement('div');
-    s2Div.className = 'sc c2nd';
-    s2Div.onclick = () => jumpToTab('tab_secondary');
-    s2Div.innerHTML = `<div class="drv">2차 (별도)</div>
-      <div class="big">${secondaryPlan.length}</div>
-      <div class="lbl">건 · ${s2Qty.toFixed(0)}개</div>`;
-    sg.appendChild(s2Div);
-  }
-
-  // 능동미나리 별도 카드
-  if (specialPlan.length) {
-    const spQty = specialPlan.reduce((s,o)=>s+(parseFloat(o.수량)||0),0);
-    const spDiv = document.createElement('div');
-    spDiv.className = 'sc cspecial';
-    spDiv.onclick = () => jumpToTab('tab_special_nari');
-    spDiv.innerHTML = `<div class="drv">능동미나리 (별도)</div>
-      <div class="big">${specialPlan.length}</div>
-      <div class="lbl">건 · ${spQty.toFixed(0)}개</div>`;
-    sg.appendChild(spDiv);
-  }
 
   const noAddr = plan.filter(o=>!o.배송주소);
   if (noAddr.length){
@@ -849,13 +856,13 @@ function renderResults(cfg){
     panel2.className = 'tab-panel';
     panel2.id = 'tab_secondary';
     const sorted2 = [...secondaryPlan].sort((a,b)=>a.거래처명.localeCompare(b.거래처명));
-    panel2.innerHTML = makePanelHTML(sorted2, false, false, !addrHidden);
+    panel2.innerHTML = makePanelHTML(sorted2, false, false, !addrHidden, false);
+    tabMeta.set('tab_secondary', { rows: sorted2, showDrv: false, showReassign: false, allowAddrAdd: false });
     tp.appendChild(panel2);
   }
 
   // 능동미나리 별도 탭
   if (specialPlan.length) {
-    const spIdx = drvList.length;
     const btn = document.createElement('button');
     btn.className = 'tab-btn';
     btn.dataset.panel = 'tab_special_nari';
@@ -874,6 +881,7 @@ function renderResults(cfg){
     panel.id = 'tab_special_nari';
     const sorted = [...specialPlan].sort((a,b)=>a.거래처명.localeCompare(b.거래처명));
     panel.innerHTML = makePanelHTML(sorted, false, false, !addrHidden);
+    tabMeta.set('tab_special_nari', { rows: sorted, showDrv: false, showReassign: false, allowAddrAdd: true });
     tp.appendChild(panel);
   }
   renderStats();

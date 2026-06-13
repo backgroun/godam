@@ -134,6 +134,18 @@ input[type=file]{display:none}
 /* MAP BUTTON */
 .map-btn{background:#0369a1;color:#fff}
 .map-btn:hover{background:#1d4ed8}
+/* BUTTON PRESS FEEL */
+button:not(:disabled):active{transform:scale(0.95)!important;transition:transform .06s!important}
+/* TOAST */
+.toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);padding:11px 22px;border-radius:10px;font-weight:700;font-size:14px;z-index:9999;pointer-events:none;opacity:0;transition:opacity .18s;white-space:nowrap;box-shadow:0 4px 18px rgba(0,0,0,.5)}
+/* MOBILE TABS */
+.mob-nav{display:none}
+@media(max-width:768px){
+  .mob-nav{display:flex;position:sticky;top:0;z-index:200;background:#0d0d0d;border-bottom:1px solid #2e2e2e;margin:-16px -12px 16px}
+  .mob-nav-btn{flex:1;padding:13px 6px;font-size:14px;font-weight:700;cursor:pointer;background:none;border:none;color:#555;border-bottom:3px solid transparent;transition:.15s}
+  .mob-nav-btn.active{color:#fff;border-bottom-color:#fff}
+  .mob-upload-section{transition:.15s}
+}
 /* MASTER LIST */
 #master-scroll{max-height:calc(75vh - 180px);overflow-y:auto;overflow-x:auto;border-radius:8px;border:1px solid #2e2e2e}
 #master-modal .ptbl thead th{position:sticky;top:0;z-index:2;background:#141414}
@@ -198,13 +210,19 @@ input[type=file]{display:none}
 <body>
 <div class="wrap">
 
+<!-- MOBILE NAV (hidden on desktop) -->
+<div class="mob-nav" id="mob-nav">
+  <button class="mob-nav-btn active" id="mob-btn-upload" onclick="mobSwitch('upload')">📂 파일 관리</button>
+  <button class="mob-nav-btn" id="mob-btn-list" onclick="mobSwitch('list')">🚚 배송리스트</button>
+</div>
+
 <div class="hdr">
   <h1>고담 배송플랜 자동화</h1>
   <p class="sub" id="sub-msg">거래처 마스터 + 발주 파일 업로드 → 기사별 배송플랜 자동 생성</p>
 </div>
 
 <!-- UPLOAD -->
-<div class="card upload-card">
+<div class="card upload-card" id="upload-section">
   <div class="uprow">
     <div class="dz" id="dz-m">
       <!-- 업로드 상태 -->
@@ -217,13 +235,13 @@ input[type=file]{display:none}
       </div>
       <!-- 저장됨 상태 (localStorage) -->
       <div id="m-cached" style="display:none">
-        <div class="cached-row">
+        <div class="cached-row" style="flex-wrap:wrap;gap:6px">
           <span style="font-size:18px;flex-shrink:0">✅</span>
           <div style="flex:1;min-width:0;text-align:left">
             <div class="dz-cached-info" id="m-cached-cnt"></div>
-            <div class="dz-cached-sub" id="m-cached-sub" style="margin:0"></div>
+            <div class="dz-cached-sub" id="m-cached-sub" style="margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
           </div>
-          <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">
+          <div style="display:flex;gap:6px;flex-shrink:0;align-items:center">
             <button class="m-add-btn" onclick="event.stopPropagation();toggleAddForm()">+ 거래처 추가</button>
             <button class="dz-update-btn" onclick="event.stopPropagation();openMasterPicker()">파일 교체</button>
           </div>
@@ -289,7 +307,12 @@ input[type=file]{display:none}
 <!-- MASTER LIST MODAL -->
 <div class="modal-overlay" id="master-modal" onclick="if(event.target===this)closeModal('master-modal')">
   <div class="modal" style="max-width:860px">
-    <div class="modal-hdr">🗄 거래처 전체 목록 <span id="master-cnt-label" style="color:#666;font-weight:400;font-size:13px;margin-left:4px"></span><button class="modal-close" onclick="closeModal('master-modal')">✕</button></div>
+    <div class="modal-hdr">🗄 거래처 전체 목록 <span id="master-cnt-label" style="color:#666;font-weight:400;font-size:13px;margin-left:4px"></span>
+      <div style="display:flex;gap:8px;align-items:center;margin-left:auto">
+        <button onclick="dlMasterExcel()" style="padding:6px 14px;background:#22c55e;border:none;border-radius:7px;color:#000;font-size:13px;font-weight:700;cursor:pointer">📥 엑셀 저장</button>
+        <button class="modal-close" onclick="closeModal('master-modal')">✕</button>
+      </div>
+    </div>
     <div class="modal-body">
       <div style="margin-bottom:12px">
         <input type="text" id="master-search" class="search-inp" placeholder="🔍 거래처명 검색..."
@@ -299,7 +322,7 @@ input[type=file]{display:none}
       <div id="master-scroll">
         <table class="ptbl">
           <thead><tr>
-            <th style="width:38px">#</th>
+            <th style="width:54px;min-width:54px">#</th>
             <th style="min-width:130px">거래처명</th>
             <th>배송주소 <span style="font-size:11px;font-weight:400;color:#666">(클릭하여 수정 · 검색 가능)</span></th>
           </tr></thead>
@@ -341,7 +364,7 @@ input[type=file]{display:none}
 </div>
 
 <!-- GENERATE -->
-<div class="act-btns">
+<div class="act-btns" id="gen-section">
   <button class="gen-btn" id="gen-btn" disabled onclick="generate()">🗺 배송플랜 생성</button>
   <button class="action-btn" onclick="openModal('drv-modal')">⚙️ 기사 정보 변경</button>
   <button class="action-btn" onclick="openMasterModal()">📋 거래처 전체 목록</button>
@@ -362,11 +385,11 @@ input[type=file]{display:none}
   <div id="tab-panels"></div>
   <div class="actions">
     <button class="abtn map-btn" onclick="openMapView()">🗺 지도 보기</button>
-    <button class="abtn print-btn" onclick="window.print()">🖨 인쇄</button>
+    <button class="abtn print-btn" onclick="dlPrintHTML()">🖨 인쇄용 저장</button>
     <button class="abtn dl-btn" onclick="dlExcel()">📥 Excel 다운로드</button>
   </div>
   <div class="stat-hdr" id="stat-hdr" style="display:none" onclick="toggleStats()">
-    📊 일별 통계 <span id="stats-arrow" style="margin-left:auto">▼</span>
+    📊 납품 통계 <span id="stats-arrow" style="margin-left:auto">▼</span>
   </div>
   <div id="stats-body" class="stat-body" style="display:none">
     <div id="stats-content"></div>
@@ -494,7 +517,7 @@ function showCachedMaster(meta) {
   $('m-upload').style.display = 'none';
   $('m-cached').style.display = 'block';
   $('m-cached-cnt').textContent = `거래처 마스터 저장됨 (${meta.count.toLocaleString()}개)`;
-  $('m-cached-sub').innerHTML = `${h(meta.filename)}<br>저장일: ${h(meta.date)}`;
+  $('m-cached-sub').innerHTML = `${h(meta.filename)} &nbsp;·&nbsp; 저장일: ${h(meta.date)}`;
   $('master-cnt-label').textContent = `(${meta.count.toLocaleString()}개)`;
   if ($('master-modal')?.classList.contains('open')) renderMasterList();
 }
@@ -551,6 +574,7 @@ function reassign(name, newDriver) {
   const sy = window.scrollY;
   renderResults(currentCfg);
   window.scrollTo(0, sy);
+  showToast(`${name} → ${newDriver} 변경 완료`);
 }
 
 function openShareCard(drvName) {
@@ -860,8 +884,18 @@ function loadPlanFromStorage() {
 function saveDriverSettings() {
   const cfg = getDriverCfg();
   try { localStorage.setItem(LS_DRIVERS, JSON.stringify(cfg)); } catch(e) {}
-  const btn = document.querySelector('.save-drv-btn');
-  if (btn) { btn.textContent = '✓ 저장됨'; setTimeout(() => { btn.textContent = '저장'; }, 2000); }
+  currentCfg = cfg;
+  if (plan && plan.length) {
+    [...plan, ...specialPlan, ...secondaryPlan].forEach(o => {
+      if (!o._manual) o.담당기사 = getDriver(o.구역, cfg);
+    });
+    savePlan();
+    const sy = window.scrollY;
+    renderResults(cfg);
+    window.scrollTo(0, sy);
+  }
+  closeModal('drv-modal');
+  showToast('기사 정보가 변경되었습니다.');
 }
 
 function loadDriversFromStorage() {
@@ -995,32 +1029,86 @@ function _saveMasterAddr(name, addr) {
 }
 
 function renderStats() {
-  let hist = [];
-  try { hist = JSON.parse(localStorage.getItem(LS_STATS)) || []; } catch(e) {}
-  if (!hist.length) { $('stat-hdr').style.display='none'; return; }
-  const drvNames = [...new Set(hist.flatMap(s => Object.keys(s.drivers||{})))];
-  let html = `<table class="ptbl" style="table-layout:auto"><thead><tr>
-    <th style="width:100px">날짜</th>
-    <th style="width:65px;text-align:center">거래처</th>
-    <th style="width:55px;text-align:center">총건</th>
-    ${drvNames.map(d=>`<th style="width:65px;text-align:center">${h(d)}</th>`).join('')}
-    <th style="width:50px;text-align:center">2차</th>
-    <th style="width:75px;text-align:center">능동미나리</th>
+  if (!plan || !plan.length) { $('stat-hdr').style.display='none'; return; }
+  const allItems = [...plan, ...specialPlan, ...secondaryPlan];
+
+  // 거래처별 납품 수량
+  const custMap = new Map();
+  allItems.forEach(o => {
+    const key = o.거래처명;
+    if (!custMap.has(key)) custMap.set(key, { 담당기사: o.담당기사, 구역: o.구역, qty: 0, cnt: 0 });
+    const e = custMap.get(key);
+    e.qty += parseFloat(o.수량) || 0;
+    e.cnt++;
+  });
+  const custRows = [...custMap.entries()].sort((a,b) => b[1].qty - a[1].qty);
+
+  // 품목별 납품 수량
+  const itemMap = new Map();
+  allItems.forEach(o => {
+    const key = String(o.품목명||'').trim() || '(미입력)';
+    if (!itemMap.has(key)) itemMap.set(key, { qty: 0, cnt: 0 });
+    const e = itemMap.get(key);
+    e.qty += parseFloat(o.수량) || 0;
+    e.cnt++;
+  });
+  const itemRows = [...itemMap.entries()].sort((a,b) => b[1].qty - a[1].qty);
+
+  let custHtml = `<table class="ptbl" style="table-layout:auto"><thead><tr>
+    <th style="width:32px;text-align:center">#</th>
+    <th>거래처명</th><th>담당기사</th><th>구역</th>
+    <th style="text-align:center;width:60px">납품수량</th>
+    <th style="text-align:center;width:50px">품목수</th>
   </tr></thead><tbody>`;
-  [...hist].reverse().forEach((s, i) => {
+  custRows.forEach(([name, e], i) => {
     const bg = i%2===0 ? '#141414' : '#202020';
-    html += `<tr>
-      <td style="background:${bg}">${h(s.date)}</td>
-      <td style="background:${bg};text-align:center">${s.totalCust}</td>
-      <td style="background:${bg};text-align:center">${s.totalRows}</td>
-      ${drvNames.map(d=>`<td style="background:${bg};text-align:center">${s.drivers?.[d]||'-'}</td>`).join('')}
-      <td style="background:${bg};text-align:center">${s.secondary||'-'}</td>
-      <td style="background:${bg};text-align:center">${s.special||'-'}</td>
+    custHtml += `<tr>
+      <td style="background:${bg};text-align:center;color:#888">${i+1}</td>
+      <td style="background:${bg};font-weight:700">${h(name)}</td>
+      <td style="background:${bg}">${h(e.담당기사||'-')}</td>
+      <td style="background:${bg}">${h(e.구역||'-')}</td>
+      <td style="background:${bg};text-align:center;font-weight:700">${e.qty % 1 === 0 ? e.qty : e.qty.toFixed(1)}</td>
+      <td style="background:${bg};text-align:center">${e.cnt}</td>
     </tr>`;
   });
-  html += `</tbody></table>`;
-  $('stats-content').innerHTML = html;
+  custHtml += `</tbody></table>`;
+
+  let itemHtml = `<table class="ptbl" style="table-layout:auto"><thead><tr>
+    <th style="width:32px;text-align:center">#</th>
+    <th>품목명</th>
+    <th style="text-align:center;width:60px">총납품수량</th>
+    <th style="text-align:center;width:50px">주문건수</th>
+  </tr></thead><tbody>`;
+  itemRows.forEach(([name, e], i) => {
+    const bg = i%2===0 ? '#141414' : '#202020';
+    itemHtml += `<tr>
+      <td style="background:${bg};text-align:center;color:#888">${i+1}</td>
+      <td style="background:${bg};font-weight:700">${h(name)}</td>
+      <td style="background:${bg};text-align:center;font-weight:700">${e.qty % 1 === 0 ? e.qty : e.qty.toFixed(1)}</td>
+      <td style="background:${bg};text-align:center">${e.cnt}</td>
+    </tr>`;
+  });
+  itemHtml += `</tbody></table>`;
+
+  $('stats-content').innerHTML = `
+    <div style="display:flex;gap:8px;margin-bottom:10px">
+      <button onclick="showStatTab('cust')" id="stab-cust" style="padding:6px 16px;border-radius:7px;border:none;cursor:pointer;font-size:13px;font-weight:700;background:#fff;color:#000">거래처별 납품수량</button>
+      <button onclick="showStatTab('item')" id="stab-item" style="padding:6px 16px;border-radius:7px;border:1px solid #383838;cursor:pointer;font-size:13px;font-weight:700;background:#1a1a1a;color:#bbb">품목별 납품수량</button>
+    </div>
+    <div id="stab-cust-body">${custHtml}</div>
+    <div id="stab-item-body" style="display:none">${itemHtml}</div>`;
   $('stat-hdr').style.display = 'flex';
+}
+
+function showStatTab(tab) {
+  $('stab-cust-body').style.display = tab==='cust' ? '' : 'none';
+  $('stab-item-body').style.display = tab==='item' ? '' : 'none';
+  $('stab-cust').style.cssText = tab==='cust'
+    ? 'padding:6px 16px;border-radius:7px;border:none;cursor:pointer;font-size:13px;font-weight:700;background:#fff;color:#000'
+    : 'padding:6px 16px;border-radius:7px;border:1px solid #383838;cursor:pointer;font-size:13px;font-weight:700;background:#1a1a1a;color:#bbb';
+  $('stab-item').style.cssText = tab==='item'
+    ? 'padding:6px 16px;border-radius:7px;border:none;cursor:pointer;font-size:13px;font-weight:700;background:#fff;color:#000'
+    : 'padding:6px 16px;border-radius:7px;border:1px solid #383838;cursor:pointer;font-size:13px;font-weight:700;background:#1a1a1a;color:#bbb';
 }
 
 function toggleAddForm() {
@@ -1052,10 +1140,10 @@ function submitAdd() {
     localStorage.setItem(LS_META, JSON.stringify(meta));
   } catch(e) {}
   $('m-cached-cnt').textContent = `거래처 마스터 저장됨 (${meta.count.toLocaleString()}개)`;
-  $('m-cached-sub').innerHTML = `${h(meta.filename)}<br>저장일: ${h(meta.date)}`;
+  $('m-cached-sub').innerHTML = `${h(meta.filename)} &nbsp;·&nbsp; 저장일: ${h(meta.date)}`;
   cancelAdd();
   $('gen-btn').disabled = !orders;
-  alert(`"${name}" 거래처가 추가되었습니다.`);
+  showToast(`"${name}" 거래처가 추가되었습니다.`);
 }
 
 // init
@@ -1093,6 +1181,7 @@ window.addEventListener('load', () => {
   if (typeof XLSX === 'undefined') {
     $('sub-msg').innerHTML = '⚠️ 라이브러리 로딩 실패 — 인터넷 연결 확인 후 새로고침하세요';
   }
+  initMobNav();
 });
 
 function h(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -1349,6 +1438,8 @@ function generate(){
   renderResults(cfg);
   $('results').style.display='block';
   $('results').scrollIntoView({behavior:'smooth', block:'start'});
+  if (window.innerWidth <= 768) mobSwitch('list');
+  showToast('배송플랜이 생성되었습니다.');
 }
 
 function renderResults(cfg){
@@ -1358,7 +1449,7 @@ function renderResults(cfg){
   $('search-inp').value = '';
   $('search-row').style.display = 'flex';
 
-  const allDrvs = [...cfg.map(d=>d.name), '택배', '미배정'];
+  const allDrvs = [...new Set([...cfg.map(d=>d.name), '택배', '미배정'])];
 
   allDrvs.forEach((drv,i) => {
     const sub = plan.filter(o=>o.담당기사===drv);
@@ -1541,6 +1632,138 @@ function dlExcel(){
   XLSX.utils.book_append_sheet(wb, ws3, '구역별요약');
 
   XLSX.writeFile(wb, `배송플랜_${dlDate}.xlsx`);
+}
+
+// ── 토스트 알림 ──────────────────────────────────────────
+function showToast(msg, color='#22c55e') {
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.style.background = color;
+  t.style.color = color === '#22c55e' ? '#000' : '#fff';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  requestAnimationFrame(() => { t.style.opacity = '1'; });
+  setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 200); }, 2500);
+}
+
+// ── 버튼 클릭음 (Web Audio API) ─────────────────────────
+let _audioCtx = null;
+function playClick() {
+  try {
+    if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = _audioCtx.createOscillator();
+    const gain = _audioCtx.createGain();
+    osc.connect(gain); gain.connect(_audioCtx.destination);
+    osc.frequency.value = 700;
+    gain.gain.setValueAtTime(0.08, _audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, _audioCtx.currentTime + 0.07);
+    osc.start(_audioCtx.currentTime); osc.stop(_audioCtx.currentTime + 0.07);
+  } catch(e) {}
+}
+document.addEventListener('click', e => {
+  if (e.target.closest('button') && !e.target.closest('button').disabled) playClick();
+}, true);
+
+// ── 인쇄용 HTML 저장 ────────────────────────────────────
+function dlPrintHTML() {
+  if (!plan) return;
+  const allPlanItems = [...plan, ...specialPlan, ...secondaryPlan].sort((a,b)=>(a._rowIdx||0)-(b._rowIdx||0));
+  const cfg = currentCfg;
+  const allDrvs = [...new Set([...cfg.map(d=>d.name), '택배', '미배정'])];
+  let sections = '';
+  allDrvs.forEach(drv => {
+    const sub = plan.filter(o=>o.담당기사===drv);
+    if (!sub.length) return;
+    const custs = [...new Map(sub.map(o=>[o.거래처명,o])).values()];
+    let rows = '';
+    let seq = 0;
+    const grouped = new Map();
+    sub.forEach(o => {
+      if (!grouped.has(o.거래처명)) grouped.set(o.거래처명, []);
+      grouped.get(o.거래처명).push(o);
+    });
+    grouped.forEach((items, name) => {
+      seq++;
+      items.forEach((o, i) => {
+        const note = [o.비고1, o.비고2].filter(Boolean).join(' / ');
+        rows += `<tr>
+          ${i===0 ? `<td rowspan="${items.length}" style="text-align:center;color:#888">${seq}</td>
+          <td rowspan="${items.length}" style="font-weight:700">${name}</td>` : ''}
+          <td>${o.품목명||''}</td><td style="text-align:center">${o.수량||''}</td>
+          <td style="text-align:center">${o.구분||''}</td><td>${note}</td>
+        </tr>`;
+      });
+    });
+    sections += `<h2 style="margin:20px 0 6px;font-size:16px">${drv} (${new Set(sub.map(o=>o.거래처명)).size}거래처)</h2>
+    <table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:16px">
+      <thead><tr style="background:#eee">
+        <th style="padding:6px 8px;border:1px solid #ccc;width:40px">#</th>
+        <th style="padding:6px 8px;border:1px solid #ccc">거래처명</th>
+        <th style="padding:6px 8px;border:1px solid #ccc">품목명</th>
+        <th style="padding:6px 8px;border:1px solid #ccc;width:50px">수량</th>
+        <th style="padding:6px 8px;border:1px solid #ccc;width:70px">구분</th>
+        <th style="padding:6px 8px;border:1px solid #ccc">비고</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+  });
+  const html = `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8">
+    <title>배송플랜 ${dlDate}</title>
+    <style>body{font-family:'맑은 고딕',sans-serif;padding:20px;color:#000}
+    table td,table th{border:1px solid #ccc;padding:5px 8px;vertical-align:top}
+    @media print{@page{margin:15mm}h2{page-break-before:auto}}</style>
+    </head><body>
+    <h1 style="font-size:20px;margin-bottom:4px">배송플랜 ${dlDate}</h1>
+    <p style="color:#666;font-size:13px;margin-bottom:20px">총 ${new Set([...plan,...specialPlan,...secondaryPlan].map(o=>o.거래처명)).size}거래처</p>
+    ${sections}
+    <script>window.onload=()=>window.print()<\/script>
+    </body></html>`;
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `배송플랜_${dlDate}.html`;
+  a.click();
+  showToast('인쇄용 파일이 저장되었습니다.');
+}
+
+// ── 거래처 마스터 엑셀 저장 ─────────────────────────────
+function dlMasterExcel() {
+  if (!masterLookup) { showToast('마스터 파일을 먼저 업로드하세요.', '#ef4444'); return; }
+  const rows = [['#','거래처명','배송주소']];
+  Object.entries(masterLookup).forEach(([name, addr], i) => rows.push([i+1, name, addr||'']));
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = [{wch:6},{wch:28},{wch:50}];
+  XLSX.utils.book_append_sheet(wb, ws, '거래처목록');
+  const today = new Date(); const dateStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+  XLSX.writeFile(wb, `거래처_마스터_${dateStr}.xlsx`);
+  showToast('거래처 목록이 저장되었습니다.');
+}
+
+// ── 모바일 탭 전환 ───────────────────────────────────────
+function mobSwitch(tab) {
+  const isMob = window.innerWidth <= 768;
+  const uploadEls = ['upload-section','gen-section'];
+  const listEl = $('results');
+  if (tab === 'upload') {
+    uploadEls.forEach(id => { const el=$(id); if(el) el.style.display=''; });
+    if (isMob && listEl) listEl.style.display = 'none';
+    $('mob-btn-upload').classList.add('active');
+    $('mob-btn-list').classList.remove('active');
+  } else {
+    uploadEls.forEach(id => { const el=$(id); if(el) el.style.display='none'; });
+    if (listEl) listEl.style.display = 'block';
+    $('mob-btn-upload').classList.remove('active');
+    $('mob-btn-list').classList.add('active');
+  }
+}
+
+// 모바일 초기화: 플랜 있으면 리스트 탭 기본 선택
+function initMobNav() {
+  if (window.innerWidth > 768) return;
+  if (plan && plan.length) {
+    mobSwitch('list');
+  }
 }
 </script>
 </body>

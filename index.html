@@ -58,7 +58,8 @@ input[type=file]{display:none}
 .gen-btn:disabled{background:#9ca3af;cursor:not-allowed}
 /* RESULTS */
 .sum-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:14px}
-.sc{padding:13px 16px;border-radius:12px;color:#fff}
+.sc{padding:13px 16px;border-radius:12px;color:#fff;cursor:pointer;transition:transform .12s,box-shadow .12s}
+.sc:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(0,0,0,.18)}
 .sc .drv{font-size:12px;font-weight:600;opacity:.85;margin-bottom:4px}
 .sc .big{font-size:32px;font-weight:900;line-height:1}
 .sc .lbl{font-size:11px;opacity:.75;margin-top:2px}
@@ -398,6 +399,18 @@ function saveStats(date, entry) {
   try { localStorage.setItem(LS_STATS, JSON.stringify(hist.slice(-90))); } catch(e) {}
 }
 
+function jumpToTab(panelId) {
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    const active = b.dataset.panel === panelId;
+    b.classList.toggle('active', active);
+  });
+  document.querySelectorAll('.tab-panel').forEach(p => {
+    p.classList.toggle('active', p.id === panelId);
+  });
+  const panel = $(panelId);
+  if (panel) panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
 function toggleStats() {
   const body = $('stats-body'), arrow = $('stats-arrow');
   const open = body.style.display !== 'none';
@@ -701,8 +714,10 @@ function renderResults(cfg){
     const qty = sub.reduce((s,o)=>s+(parseFloat(o.수량)||0),0);
     const d = cfg.find(x=>x.name===drv);
     const clr = drv==='미배정' ? 'cmiss' : (DRV_CLR[i]||'c1');
+    const sid = 'tab_' + drv.replace(/[^a-zA-Z0-9가-힣]/g,'_');
     const div = document.createElement('div');
     div.className = `sc ${clr}`;
+    div.onclick = () => jumpToTab(sid);
     div.innerHTML = `<div class="drv">${h(drv)}</div>
       <div class="big">${customers}</div>
       <div class="lbl">거래처 · ${qty.toFixed(0)}건</div>
@@ -715,6 +730,7 @@ function renderResults(cfg){
     const s2Qty = secondaryPlan.reduce((s,o)=>s+(parseFloat(o.수량)||0),0);
     const s2Div = document.createElement('div');
     s2Div.className = 'sc c2nd';
+    s2Div.onclick = () => jumpToTab('tab_secondary');
     s2Div.innerHTML = `<div class="drv">2차 (별도)</div>
       <div class="big">${secondaryPlan.length}</div>
       <div class="lbl">건 · ${s2Qty.toFixed(0)}개</div>`;
@@ -726,6 +742,7 @@ function renderResults(cfg){
     const spQty = specialPlan.reduce((s,o)=>s+(parseFloat(o.수량)||0),0);
     const spDiv = document.createElement('div');
     spDiv.className = 'sc cspecial';
+    spDiv.onclick = () => jumpToTab('tab_special_nari');
     spDiv.innerHTML = `<div class="drv">능동미나리 (별도)</div>
       <div class="big">${specialPlan.length}</div>
       <div class="lbl">건 · ${spQty.toFixed(0)}개</div>`;
@@ -744,6 +761,7 @@ function renderResults(cfg){
   if (fullList.length) {
     const btnAll = document.createElement('button');
     btnAll.className = 'tab-btn';
+    btnAll.dataset.panel = 'tab_all';
     btnAll.textContent = `전체 (${new Set(fullList.map(o=>o.거래처명)).size})`;
     btnAll.style.borderBottomColor = '#374151';
     btnAll.onclick = () => {
@@ -771,6 +789,7 @@ function renderResults(cfg){
 
     const btn = document.createElement('button');
     btn.className = 'tab-btn' + (idx===0?' active':'');
+    btn.dataset.panel = sid;
     btn.textContent = `${drv} (${cnt})`;
     btn.onclick = () => {
       document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
@@ -794,6 +813,7 @@ function renderResults(cfg){
   if (secondaryPlan.length) {
     const btn2 = document.createElement('button');
     btn2.className = 'tab-btn';
+    btn2.dataset.panel = 'tab_secondary';
     btn2.textContent = `2차 (${secondaryPlan.length})`;
     btn2.style.borderBottomColor = '#b45309';
     btn2.onclick = () => {
@@ -817,6 +837,7 @@ function renderResults(cfg){
     const spIdx = drvList.length;
     const btn = document.createElement('button');
     btn.className = 'tab-btn';
+    btn.dataset.panel = 'tab_special_nari';
     btn.textContent = `능동미나리 (${specialPlan.length})`;
     btn.style.borderBottomColor = '#0891b2';
     btn.onclick = () => {

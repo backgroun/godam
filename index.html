@@ -114,7 +114,7 @@ input[type=file]{display:none}
 .dl-btn{background:#fff;color:#000}
 .dl-btn:hover{background:#e5e5e5}
 /* driver bg colors */
-.c1{background:#c2410c}.c2{background:#15803d}.c3{background:#1e40af}.c4{background:#6d28d9}.c5{background:#9d174d}.cmiss{background:#7f1d1d}.cspecial{background:#0e7490}.c2nd{background:#78350f}
+.c1{background:#c2410c}.c2{background:#15803d}.c3{background:#1e40af}.c4{background:#6d28d9}.c5{background:#9d174d}.cmiss{background:#7f1d1d}.cspecial{background:#0e7490}.c2nd{background:#78350f}.ctbae{background:#0369a1}
 /* PRINT */
 @media print{
   body{background:#fff;color:#000}
@@ -257,7 +257,7 @@ input[type=file]{display:none}
       <button class="add-btn" onclick="addRow()">+ 기사 추가</button>
       <button class="save-drv-btn" onclick="saveDriverSettings()">저장</button>
     </div>
-    <p class="zones-ref"><b>사용 가능한 구역명:</b> 강남권, 강북권, 서울중부권, 서울서부권, 경기동북권, 경기동부권, 경기남부권, 경기서부권, 인천권, 원거리</p>
+    <p class="zones-ref"><b>사용 가능한 구역명:</b> 강남권, 강북권, 서울중부권, 서울서부권, 경기동북권, 경기동부권, 경기남부권, 경기서부권, 인천권, 택배</p>
   </div>
 </div>
 
@@ -305,7 +305,7 @@ const ZONES = {
   '경기남부권':['성남시','분당구','용인시','화성시','안성시','평택시','수원시','오산시'],
   '경기서부권':['김포시','파주시','시흥시','부천시','광명시'],
   '인천권':   ['인천'],
-  '원거리':   ['구미','부산','울산','전주','정읍','광주','대구','대전'],
+  '택배':     ['구미','부산','울산','전주','정읍','광주','대구','대전'],
 };
 
 const ZONE_STYLE = {
@@ -318,7 +318,7 @@ const ZONE_STYLE = {
   '경기남부권':'background:#00201a;color:#2dd4bf',
   '경기서부권':'background:#2d0a18;color:#f472b6',
   '인천권':   'background:#141820;color:#94a3b8',
-  '원거리':   'background:#1a1a1a;color:#6b7280',
+  '택배':     'background:#0f1e2e;color:#7dd3fc',
   '기타':     'background:#1a1a1a;color:#555',
   '주소없음': 'background:#2a0000;color:#f87171',
 };
@@ -330,7 +330,7 @@ const DEFAULTS = [
   {name:'임종훈 기사', zones:'강북권, 서울서부권'},
   {name:'이금관 기사', zones:'경기동북권, 경기동부권'},
   {name:'김태왕 기사', zones:'경기남부권, 경기서부권'},
-  {name:'방기준 차장', zones:'인천권, 원거리'},
+  {name:'방기준 차장', zones:'인천권, 택배'},
 ];
 
 let masterLookup = null, orders = null, plan = null, specialPlan = [], secondaryPlan = [], dlDate = '', currentCfg = [];
@@ -518,7 +518,13 @@ function saveDriverSettings() {
 }
 
 function loadDriversFromStorage() {
-  try { const d = localStorage.getItem(LS_DRIVERS); if (d) return JSON.parse(d); } catch(e) {}
+  try {
+    const d = localStorage.getItem(LS_DRIVERS);
+    if (d) {
+      const parsed = JSON.parse(d);
+      return parsed.map(drv => ({ ...drv, zones: drv.zones.map(z => z === '원거리' ? '택배' : z) }));
+    }
+  } catch(e) {}
   return null;
 }
 
@@ -781,7 +787,7 @@ function makePanelHTML(rows, showDrv, showReassign, showAddr = true, allowAddrAd
     const bgStyle = `background:${bg}`;
     const drvShort = o.담당기사 ? o.담당기사.split(' ')[0] : '';
     const drvCell = showDrv ? `<td style="${bgStyle};text-align:center"${rs}>${h(drvShort)}</td>` : '';
-    const drvOpts = showReassign ? [...currentCfg.map(d=>d.name),'미배정']
+    const drvOpts = showReassign ? [...currentCfg.map(d=>d.name),'택배','미배정']
       .map(d=>`<option value="${h(d)}"${o.담당기사===d?' selected':''}>${h(d)}</option>`).join('') : '';
     const raCell = showReassign
       ? `<td style="${bgStyle};vertical-align:middle"${rs}><select class="drv-sel" data-name="${h(o.거래처명)}" onchange="reassign(this.dataset.name,this.value)">${drvOpts}</select></td>`
@@ -858,7 +864,7 @@ function renderResults(cfg){
   $('search-inp').value = '';
   $('search-row').style.display = 'flex';
 
-  const allDrvs = [...cfg.map(d=>d.name), '미배정'];
+  const allDrvs = [...cfg.map(d=>d.name), '택배', '미배정'];
 
   allDrvs.forEach((drv,i) => {
     const sub = plan.filter(o=>o.담당기사===drv);
@@ -866,7 +872,7 @@ function renderResults(cfg){
     const customers = new Set(sub.map(o=>o.거래처명)).size;
     const qty = sub.reduce((s,o)=>s+(parseFloat(o.수량)||0),0);
     const d = cfg.find(x=>x.name===drv);
-    const clr = drv==='미배정' ? 'cmiss' : (DRV_CLR[i]||'c1');
+    const clr = drv==='미배정' ? 'cmiss' : drv==='택배' ? 'ctbae' : (DRV_CLR[i]||'c1');
     const sid = 'tab_' + drv.replace(/[^a-zA-Z0-9가-힣]/g,'_');
     const div = document.createElement('div');
     div.className = `sc ${clr}`;

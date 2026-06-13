@@ -115,6 +115,15 @@ input[type=file]{display:none}
 .dl-btn:hover{background:#e5e5e5}
 /* driver bg colors */
 .c1{background:#c2410c}.c2{background:#15803d}.c3{background:#1e40af}.c4{background:#6d28d9}.c5{background:#9d174d}.cmiss{background:#7f1d1d}.cspecial{background:#0e7490}.c2nd{background:#78350f}.ctbae{background:#0369a1}
+/* MASTER LIST */
+.master-hdr{font-size:14px;font-weight:700;color:#999;cursor:pointer;user-select:none;display:flex;align-items:center;gap:6px;transition:.15s}
+.master-hdr:hover{color:#fff}
+.master-body{margin-top:14px;display:none}
+.master-body.open{display:block}
+#master-scroll{max-height:460px;overflow-y:auto;overflow-x:auto;border-radius:8px;border:1px solid #2e2e2e}
+#master-card .ptbl thead th{position:sticky;top:0;z-index:2;background:#141414}
+.master-addr-cell{cursor:pointer}
+.master-addr-cell:hover{outline:1px dashed #22c55e;background:#0a1f12!important}
 /* PRINT */
 @media print{
   body{background:#fff;color:#000}
@@ -261,6 +270,33 @@ input[type=file]{display:none}
   </div>
 </div>
 
+<!-- MASTER LIST -->
+<div class="card" id="master-card">
+  <div class="master-hdr" onclick="toggleMasterList()">
+    🗄 거래처 전체 목록 <span id="master-cnt-label" style="color:#666;font-weight:400;font-size:13px;margin-left:4px"></span>
+    <span id="master-arrow" style="margin-left:auto">▼</span>
+  </div>
+  <div class="master-body" id="master-body">
+    <div style="margin-bottom:12px">
+      <input type="text" id="master-search" class="search-inp" placeholder="🔍 거래처명 검색..."
+        oninput="renderMasterList()"
+        oncompositionend="renderMasterList()">
+    </div>
+    <div id="master-scroll">
+      <table class="ptbl">
+        <thead><tr>
+          <th style="width:38px">#</th>
+          <th style="min-width:130px">거래처명</th>
+          <th>배송주소 <span style="font-size:11px;font-weight:400;color:#666">(클릭하여 수정 · 검색 가능)</span></th>
+        </tr></thead>
+        <tbody id="master-tbody">
+          <tr><td colspan="3" style="text-align:center;color:#555;padding:20px;font-size:14px">마스터 파일을 먼저 업로드하세요</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
 <!-- GENERATE -->
 <button class="gen-btn" id="gen-btn" disabled onclick="generate()">🗺 배송플랜 생성</button>
 
@@ -371,6 +407,8 @@ function showCachedMaster(meta) {
   $('m-cached').style.display = 'block';
   $('m-cached-cnt').textContent = `거래처 마스터 저장됨 (${meta.count.toLocaleString()}개)`;
   $('m-cached-sub').innerHTML = `${h(meta.filename)}<br>저장일: ${h(meta.date)}`;
+  $('master-cnt-label').textContent = `(${meta.count.toLocaleString()}개)`;
+  if ($('master-body')?.classList.contains('open')) renderMasterList();
 }
 
 function showUploadMaster() {
@@ -554,6 +592,102 @@ function toggleStats() {
   const open = body.style.display !== 'none';
   body.style.display = open ? 'none' : 'block';
   arrow.textContent = open ? '▼' : '▲';
+}
+
+function toggleMasterList() {
+  const b = $('master-body'), a = $('master-arrow');
+  b.classList.toggle('open');
+  a.textContent = b.classList.contains('open') ? '▲' : '▼';
+  if (b.classList.contains('open')) renderMasterList();
+}
+
+function renderMasterList() {
+  const tbody = $('master-tbody');
+  if (!tbody) return;
+  if (!masterLookup) {
+    tbody.innerHTML = `<tr><td colspan="3" style="text-align:center;color:#555;padding:20px;font-size:14px">마스터 파일을 먼저 업로드하세요</td></tr>`;
+    $('master-cnt-label').textContent = '';
+    return;
+  }
+  const term = ($('master-search')?.value || '').toLowerCase().trim();
+  const all = Object.entries(masterLookup).sort(([a],[b]) => a.localeCompare(b, 'ko'));
+  const filtered = term ? all.filter(([n]) => n.toLowerCase().includes(term)) : all;
+  const LIMIT = 300;
+  const shown = filtered.slice(0, LIMIT);
+  $('master-cnt-label').textContent = `(${all.length.toLocaleString()}개${term ? ` · 검색: ${filtered.length}건` : ''})`;
+  const rows = shown.map(([name, addr], i) => {
+    const bg = i%2===0 ? '#141414' : '#202020';
+    const addrCell = addr
+      ? `<span style="color:#d0d0d0;font-size:14px">${h(addr)}</span>`
+      : `<span class="no-addr">+ 주소 등록</span>`;
+    return `<tr>
+      <td style="background:${bg};text-align:center;color:#888;font-size:13px">${i+1}</td>
+      <td style="background:${bg};font-weight:700;color:#fff;font-size:15px">${h(name)}</td>
+      <td class="master-addr-cell" style="background:${bg}" data-name="${h(name)}" onclick="editMasterAddr(this)">${addrCell}</td>
+    </tr>`;
+  }).join('');
+  const more = filtered.length > LIMIT
+    ? `<tr><td colspan="3" style="text-align:center;padding:12px;color:#555;font-size:13px">총 ${filtered.length.toLocaleString()}건 중 ${LIMIT}건 표시 · 검색으로 더 찾기</td></tr>`
+    : '';
+  tbody.innerHTML = rows + more;
+}
+
+function editMasterAddr(cell) {
+  if (cell.querySelector('input')) return;
+  const name = cell.dataset.name;
+  const cur = masterLookup[name] || '';
+  if (!cur && typeof daum !== 'undefined' && daum.Postcode) {
+    new daum.Postcode({ oncomplete: d => {
+      const addr = d.roadAddress || d.jibunAddress || d.address;
+      if (addr) _saveMasterAddr(name, addr);
+    }}).open();
+    return;
+  }
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'display:flex;gap:4px;align-items:center';
+  const inp = document.createElement('input');
+  inp.type = 'text'; inp.value = cur;
+  inp.style.cssText = 'flex:1;border:1px solid #22c55e;border-radius:4px;padding:5px 8px;font:inherit;font-size:14px;background:#0a1f12;color:#e5e5e5;min-width:0';
+  const btn = document.createElement('button');
+  btn.textContent = '주소검색';
+  btn.style.cssText = 'flex-shrink:0;padding:5px 10px;background:#fff;color:#000;border:none;border-radius:4px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap';
+  let saved = false;
+  const doSave = v => { if (saved) return; saved = true; _saveMasterAddr(name, v.trim()); };
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); inp.blur(); }
+    if (e.key === 'Escape') { saved = true; renderMasterList(); }
+  });
+  inp.addEventListener('blur', () => setTimeout(() => doSave(inp.value), 150));
+  btn.addEventListener('mousedown', e => e.preventDefault());
+  btn.addEventListener('click', () => {
+    if (typeof daum === 'undefined' || !daum.Postcode) { alert('주소 검색 로딩 중...'); return; }
+    saved = true;
+    new daum.Postcode({ oncomplete: d => {
+      const addr = d.roadAddress || d.jibunAddress || d.address;
+      _saveMasterAddr(name, addr || cur);
+    }}).open();
+  });
+  wrap.appendChild(inp); wrap.appendChild(btn);
+  cell.innerHTML = ''; cell.appendChild(wrap);
+  inp.focus(); inp.select();
+}
+
+function _saveMasterAddr(name, addr) {
+  masterLookup[name] = addr || null;
+  const meta = loadMasterFromStorage()?.meta || { filename: '직접수정' };
+  saveMaster(masterLookup, meta.filename);
+  const cnt = Object.keys(masterLookup).length;
+  if ($('m-cached-cnt')) $('m-cached-cnt').textContent = `거래처 마스터 저장됨 (${cnt.toLocaleString()}개)`;
+  [plan, specialPlan, secondaryPlan].forEach(arr => (arr||[]).forEach(o => {
+    if (o.거래처명 === name) o.배송주소 = addr || '';
+  }));
+  if (plan) savePlan();
+  renderMasterList();
+  if (plan && $('results').style.display !== 'none') {
+    const sy = window.scrollY;
+    renderResults(currentCfg);
+    window.scrollTo(0, sy);
+  }
 }
 
 function renderStats() {

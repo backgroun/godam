@@ -71,8 +71,10 @@ input[type=file]{display:none}
 .action-btn:hover{background:#262626;color:#fff;border-color:#555}
 /* RESULTS */
 .sum-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:8px;margin-bottom:16px}
-.sc{padding:14px 16px;border-radius:14px;color:#fff;cursor:pointer;transition:transform .12s,box-shadow .12s}
+.sc{padding:14px 16px;border-radius:14px;color:#fff;cursor:pointer;transition:transform .12s,box-shadow .12s;position:relative}
 .sc:hover{transform:translateY(-3px);box-shadow:0 10px 28px rgba(0,0,0,.6)}
+.share-btn{position:absolute;top:7px;right:7px;background:rgba(255,255,255,.18);border:none;border-radius:6px;padding:3px 6px;cursor:pointer;font-size:13px;line-height:1;color:#fff;transition:.12s}
+.share-btn:hover{background:rgba(255,255,255,.35)}
 .sc .drv{font-size:12px;font-weight:700;opacity:.9;margin-bottom:4px}
 .sc .big{font-size:30px;font-weight:900;line-height:1}
 .sc .zns{font-size:11px;opacity:.85;margin-top:7px;line-height:1.6}
@@ -300,6 +302,22 @@ input[type=file]{display:none}
   </div>
 </div>
 
+<!-- SHARE CARD MODAL -->
+<div class="modal-overlay" id="share-modal" onclick="if(event.target===this)closeModal('share-modal')">
+  <div class="modal" style="max-width:600px">
+    <div class="modal-hdr" style="background:#0d0d0d">
+      <span style="font-size:14px;color:#aaa" id="share-modal-title">배송리스트</span>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button id="share-dl-btn" onclick="downloadShareCard()" style="background:#22c55e;border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:700;padding:7px 14px;cursor:pointer;transition:.12s">💾 이미지 저장</button>
+        <button class="modal-close" onclick="closeModal('share-modal')">✕</button>
+      </div>
+    </div>
+    <div style="overflow-y:auto;max-height:82vh">
+      <div id="share-content" style="padding:28px 24px;background:#fff;color:#111;font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;min-width:520px"></div>
+    </div>
+  </div>
+</div>
+
 <!-- GENERATE -->
 <div class="act-btns">
   <button class="gen-btn" id="gen-btn" disabled onclick="generate()">🗺 배송플랜 생성</button>
@@ -334,6 +352,7 @@ input[type=file]{display:none}
 
 </div>
 <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
 <script>
 const $ = id => document.getElementById(id);
@@ -470,6 +489,78 @@ function reassign(name, newDriver) {
   const sy = window.scrollY;
   renderResults(currentCfg);
   window.scrollTo(0, sy);
+}
+
+function openShareCard(drvName) {
+  const allPlan = [...plan, ...specialPlan, ...secondaryPlan];
+  const sub = allPlan.filter(o => o.담당기사 === drvName)
+    .sort((a,b) => (a._rowIdx||0) - (b._rowIdx||0));
+  if (!sub.length) return;
+
+  // 거래처별 그룹화
+  const custMap = new Map();
+  sub.forEach(o => {
+    if (!custMap.has(o.거래처명)) custMap.set(o.거래처명, { addr: o.배송주소||'', total: 0 });
+    custMap.get(o.거래처명).total += parseFloat(String(o.수량).replace(/[^0-9.]/g,'')) || 0;
+  });
+  const custs = [...custMap.entries()];
+
+  const dateStr = dlDate
+    ? `${dlDate.slice(0,4)}.${dlDate.slice(4,6)}.${dlDate.slice(6,8)}`
+    : new Date().toLocaleDateString('ko-KR');
+
+  const rows = custs.map(([name, {addr, total}], i) => {
+    const bg = i % 2 === 0 ? '#f3f4f6' : '#ffffff';
+    const qStr = total > 0 ? ` <span style="color:#666;font-weight:400;font-size:13px">(${Number.isInteger(total)?total:total.toFixed(1)})</span>` : '';
+    return `<tr style="background:${bg}">
+      <td style="padding:9px 8px;text-align:center;color:#999;font-size:13px;border-right:1px solid #e5e7eb">${i+1}</td>
+      <td style="padding:9px 12px;font-weight:700;font-size:15px;color:#111;border-right:1px solid #e5e7eb;min-width:130px">${h(name)}${qStr}</td>
+      <td style="padding:9px 12px;font-size:14px;color:#333;word-break:break-all">${h(addr||'주소 미등록')}</td>
+    </tr>`;
+  }).join('');
+
+  $('share-content').innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:16px;padding-bottom:12px;border-bottom:3px solid #111">
+      <div style="font-size:20px;font-weight:900;color:#111;letter-spacing:-.5px">고담 배송플랜</div>
+      <div style="font-size:13px;color:#888">${dateStr}</div>
+    </div>
+    <div style="font-size:22px;font-weight:900;color:#111;margin-bottom:14px">📦 ${h(drvName)}</div>
+    <table style="width:100%;border-collapse:collapse;border:1px solid #e5e7eb;overflow:hidden;border-radius:8px">
+      <thead>
+        <tr style="background:#111">
+          <th style="padding:9px 8px;color:#fff;font-size:12px;width:32px;border-right:1px solid #333">#</th>
+          <th style="padding:9px 12px;text-align:left;color:#fff;font-size:13px;border-right:1px solid #333">거래처명 (수량)</th>
+          <th style="padding:9px 12px;text-align:left;color:#fff;font-size:13px">배송주소</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div style="margin-top:12px;display:flex;justify-content:space-between;font-size:12px;color:#888">
+      <span>고담물산</span>
+      <span>총 <b style="color:#333;font-size:14px">${custs.length}</b> 거래처</span>
+    </div>`;
+
+  $('share-modal-title').textContent = `${drvName} 배송리스트`;
+  $('share-dl-btn').dataset.drv = drvName;
+  openModal('share-modal');
+}
+
+function downloadShareCard() {
+  const el = $('share-content');
+  const drvName = $('share-dl-btn').dataset.drv || '기사';
+  const fileName = `배송리스트_${drvName}_${dlDate||'today'}.png`;
+  if (typeof html2canvas === 'undefined') { alert('이미지 라이브러리 로딩 중입니다. 잠시 후 다시 시도하세요.'); return; }
+  const btn = $('share-dl-btn');
+  btn.textContent = '⏳ 생성 중...';
+  btn.disabled = true;
+  html2canvas(el, { backgroundColor: '#ffffff', scale: 2, useCORS: true, logging: false })
+    .then(canvas => {
+      const a = document.createElement('a');
+      a.download = fileName;
+      a.href = canvas.toDataURL('image/png');
+      a.click();
+    })
+    .finally(() => { btn.textContent = '💾 이미지 저장'; btn.disabled = false; });
 }
 
 function openModal(id) {
@@ -1076,7 +1167,8 @@ function renderResults(cfg){
     const div = document.createElement('div');
     div.className = `sc ${clr}`;
     div.onclick = () => jumpToTab(sid);
-    div.innerHTML = `<div class="drv">${h(drv)}</div>
+    div.innerHTML = `<button class="share-btn" onclick="event.stopPropagation();openShareCard('${h(drv)}')" title="배송리스트 저장">📷</button>
+      <div class="drv">${h(drv)}</div>
       <div class="big">${customers}</div>
       ${d ? `<div class="zns">${d.zones.join(' · ')}</div>` : ''}`;
     sg.appendChild(div);

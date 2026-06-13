@@ -77,6 +77,8 @@ input[type=file]{display:none}
 .ptbl td{padding:7px 9px;border-bottom:1px solid #f3f4f6;vertical-align:top}
 .ptbl tr:last-child td{border-bottom:none}
 .ptbl tr:hover td{background:#f9fafb}
+.ptbl .grp-last td{border-bottom:2px solid #d1d5db}
+.ptbl .grp-inner td{border-bottom:1px dashed #ebebeb}
 .zchip{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .no-addr{color:#dc2626;font-style:italic;font-size:12px}
 .addr{font-size:12px;color:#6b7280}
@@ -438,43 +440,43 @@ function getDriver(zone, cfg){
   return '미배정';
 }
 
-function groupOrders(arr) {
-  const map = new Map();
-  arr.forEach(o => {
-    if (!map.has(o.거래처명)) {
-      map.set(o.거래처명, {
-        담당기사: o.담당기사, 구역: o.구역, 거래처명: o.거래처명,
-        배송주소: o.배송주소, 구분: o.구분,
-        비고1: o.비고1, 비고2: o.비고2, 납기일: o.납기일,
-        _items: [],
-      });
-    }
-    const e = map.get(o.거래처명);
-    const qty = String(o.수량||'').trim();
-    const item = String(o.품목명||'').trim();
-    if (item) e._items.push(qty ? `${item} ${qty}` : item);
-    if (o.비고1 && !e.비고1) e.비고1 = o.비고1;
-    if (o.비고2 && !e.비고2) e.비고2 = o.비고2;
-  });
-  return [...map.values()].map(e => ({ ...e, 품목명: e._items.join(' / ') }));
-}
-
 function makePanelHTML(rows, showDrv) {
-  const g = groupOrders(rows);
-  const drvCol = showDrv ? `<th style="width:120px">담당기사</th>` : '';
-  const hdr = `<th style="width:34px">#</th><th style="width:95px">구역</th>${drvCol}<th style="width:155px">거래처명</th><th>배송주소</th><th>품목명</th><th style="width:55px">구분</th><th>비고</th>`;
-  const body = g.map((o,i) => {
-    const drvCell = showDrv ? `<td style="text-align:center">${h(o.담당기사)}</td>` : '';
-    return `<tr>
-      <td style="text-align:center;color:#9ca3af">${i+1}</td>
-      <td><span class="zchip" style="${ZONE_STYLE[o.구역]||ZONE_STYLE['기타']}">${h(o.구역)}</span></td>
-      ${drvCell}
-      <td class="cust">${h(o.거래처명)}</td>
-      <td class="addr">${o.배송주소 ? h(o.배송주소) : '<span class="no-addr">주소 없음</span>'}</td>
-      <td>${h(o.품목명)}</td>
-      <td style="text-align:center">${h(String(o.구분))}</td>
-      <td class="note">${[o.비고1,o.비고2].filter(Boolean).map(h).join(' / ')}</td>
-    </tr>`;
+  const map = new Map();
+  rows.forEach(o => {
+    if (!map.has(o.거래처명)) map.set(o.거래처명, { meta: o, items: [] });
+    map.get(o.거래처명).items.push({ 품목명: String(o.품목명||''), 수량: String(o.수량||''), 구분: String(o.구분||'') });
+  });
+  const groups = [...map.values()];
+  const drvTh = showDrv ? `<th style="width:120px">담당기사</th>` : '';
+  const hdr = `<th style="width:34px">#</th><th style="width:95px">구역</th>${drvTh}<th style="width:155px">거래처명</th><th>배송주소</th><th>품목명</th><th style="width:50px">수량</th><th style="width:55px">구분</th><th>비고</th>`;
+  let seq = 0;
+  const body = groups.map(({ meta: o, items }) => {
+    seq++;
+    const n = items.length;
+    const rs = n > 1 ? ` rowspan="${n}"` : '';
+    const drvCell = showDrv ? `<td style="text-align:center"${rs}>${h(o.담당기사)}</td>` : '';
+    return items.map((item, idx) => {
+      const isLast = idx === n - 1;
+      const cls = n > 1 ? (isLast ? ' class="grp-last"' : ' class="grp-inner"') : '';
+      if (idx === 0) {
+        return `<tr${cls}>
+          <td style="text-align:center;color:#9ca3af"${rs}>${seq}</td>
+          <td${rs}><span class="zchip" style="${ZONE_STYLE[o.구역]||ZONE_STYLE['기타']}">${h(o.구역)}</span></td>
+          ${drvCell}
+          <td class="cust"${rs}>${h(o.거래처명)}</td>
+          <td class="addr"${rs}>${o.배송주소 ? h(o.배송주소) : '<span class="no-addr">주소 없음</span>'}</td>
+          <td>${h(item.품목명)}</td>
+          <td style="text-align:center">${h(item.수량)}</td>
+          <td style="text-align:center">${h(item.구분)}</td>
+          <td class="note"${rs}>${[o.비고1,o.비고2].filter(Boolean).map(h).join(' / ')}</td>
+        </tr>`;
+      }
+      return `<tr${cls}>
+          <td>${h(item.품목명)}</td>
+          <td style="text-align:center">${h(item.수량)}</td>
+          <td style="text-align:center">${h(item.구분)}</td>
+        </tr>`;
+    }).join('');
   }).join('');
   return `<table class="ptbl"><thead><tr>${hdr}</tr></thead><tbody>${body}</tbody></table>`;
 }
@@ -655,35 +657,35 @@ function dlExcel(){
   const wb = XLSX.utils.book_new();
   const cfg = getDriverCfg();
   const allDrvs = [...cfg.map(d=>d.name),'미배정'];
-  const rows = [['#','담당기사','구역','거래처명','배송주소','품목명','구분','비고1','비고2','납기일']];
+  const rows = [['#','담당기사','구역','거래처명','배송주소','품목명','수량','구분','비고1','비고2','납기일']];
   let seq=1;
   allDrvs.forEach(drv => {
     const sub = plan.filter(o=>o.담당기사===drv);
     if (!sub.length) return;
-    rows.push([`▶ ${drv}`,'','','','','','','','','']);
-    groupOrders([...sub].sort((a,b)=>a.구역.localeCompare(b.구역)||a.거래처명.localeCompare(b.거래처명)))
-      .forEach(o=>rows.push([seq++,o.담당기사,o.구역,o.거래처명,o.배송주소,o.품목명,o.구분,o.비고1,o.비고2,o.납기일]));
+    rows.push([`▶ ${drv}`,'','','','','','','','','','']);
+    [...sub].sort((a,b)=>a.구역.localeCompare(b.구역)||a.거래처명.localeCompare(b.거래처명))
+      .forEach(o=>rows.push([seq++,o.담당기사,o.구역,o.거래처명,o.배송주소,o.품목명,o.수량,o.구분,o.비고1,o.비고2,o.납기일]));
     rows.push([]);
   });
   const ws1 = XLSX.utils.aoa_to_sheet(rows);
-  ws1['!cols']=[{wch:5},{wch:10},{wch:12},{wch:22},{wch:40},{wch:40},{wch:8},{wch:20},{wch:20},{wch:12}];
+  ws1['!cols']=[{wch:5},{wch:10},{wch:12},{wch:22},{wch:40},{wch:28},{wch:7},{wch:8},{wch:20},{wch:20},{wch:12}];
   XLSX.utils.book_append_sheet(wb, ws1, '배송플랜');
 
   if (secondaryPlan.length) {
-    const s2Rows = [['#','구역','거래처명','배송주소','품목명','구분','비고1','비고2','납기일']];
-    groupOrders([...secondaryPlan].sort((a,b)=>a.거래처명.localeCompare(b.거래처명)))
-      .forEach((o,i)=>s2Rows.push([i+1,o.구역,o.거래처명,o.배송주소,o.품목명,o.구분,o.비고1,o.비고2,o.납기일]));
+    const s2Rows = [['#','구역','거래처명','배송주소','품목명','수량','구분','비고1','비고2','납기일']];
+    [...secondaryPlan].sort((a,b)=>a.거래처명.localeCompare(b.거래처명))
+      .forEach((o,i)=>s2Rows.push([i+1,o.구역,o.거래처명,o.배송주소,o.품목명,o.수량,o.구분,o.비고1,o.비고2,o.납기일]));
     const wsS2 = XLSX.utils.aoa_to_sheet(s2Rows);
-    wsS2['!cols']=[{wch:5},{wch:12},{wch:22},{wch:40},{wch:40},{wch:8},{wch:20},{wch:20},{wch:12}];
+    wsS2['!cols']=[{wch:5},{wch:12},{wch:22},{wch:40},{wch:28},{wch:7},{wch:8},{wch:20},{wch:20},{wch:12}];
     XLSX.utils.book_append_sheet(wb, wsS2, '2차_별도');
   }
 
   if (specialPlan.length) {
-    const spRows = [['#','구역','거래처명','배송주소','품목명','구분','비고1','비고2','납기일']];
-    groupOrders([...specialPlan].sort((a,b)=>a.거래처명.localeCompare(b.거래처명)))
-      .forEach((o,i)=>spRows.push([i+1,o.구역,o.거래처명,o.배송주소,o.품목명,o.구분,o.비고1,o.비고2,o.납기일]));
+    const spRows = [['#','구역','거래처명','배송주소','품목명','수량','구분','비고1','비고2','납기일']];
+    [...specialPlan].sort((a,b)=>a.거래처명.localeCompare(b.거래처명))
+      .forEach((o,i)=>spRows.push([i+1,o.구역,o.거래처명,o.배송주소,o.품목명,o.수량,o.구분,o.비고1,o.비고2,o.납기일]));
     const wsS = XLSX.utils.aoa_to_sheet(spRows);
-    wsS['!cols']=[{wch:5},{wch:12},{wch:22},{wch:40},{wch:40},{wch:8},{wch:20},{wch:20},{wch:12}];
+    wsS['!cols']=[{wch:5},{wch:12},{wch:22},{wch:40},{wch:28},{wch:7},{wch:8},{wch:20},{wch:20},{wch:12}];
     XLSX.utils.book_append_sheet(wb, wsS, '능동미나리_별도');
   }
 

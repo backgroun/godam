@@ -256,7 +256,7 @@ input[type=file]{display:none}
 <!-- DRIVER SETTINGS MODAL -->
 <div class="modal-overlay" id="drv-modal" onclick="if(event.target===this)closeModal('drv-modal')">
   <div class="modal">
-    <div class="modal-hdr">⚙️ 기사 배정 설정<button class="modal-close" onclick="closeModal('drv-modal')">✕</button></div>
+    <div class="modal-hdr">⚙️ 기사 정보 변경<button class="modal-close" onclick="closeModal('drv-modal')">✕</button></div>
     <div class="modal-body">
       <p class="stg-note">기사 이름과 담당 구역을 수정하세요. 구역명은 아래 목록에서 그대로 입력하세요.</p>
       <table class="dtbl"><thead><tr>
@@ -303,7 +303,7 @@ input[type=file]{display:none}
 <!-- GENERATE -->
 <div class="act-btns">
   <button class="gen-btn" id="gen-btn" disabled onclick="generate()">🗺 배송플랜 생성</button>
-  <button class="action-btn" onclick="openModal('drv-modal')">⚙️ 기사 배정 변경</button>
+  <button class="action-btn" onclick="openModal('drv-modal')">⚙️ 기사 정보 변경</button>
   <button class="action-btn" onclick="openMasterModal()">📋 거래처 전체 목록</button>
 </div>
 

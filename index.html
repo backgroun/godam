@@ -72,19 +72,24 @@ input[type=file]{display:none}
 .tab-panel{background:#fff;border:1px solid #e5e7eb;border-radius:0 8px 8px 8px;padding:14px;margin-bottom:14px;display:none;overflow-x:auto}
 .tab-panel.active{display:block}
 /* TABLE */
-.ptbl{width:100%;border-collapse:collapse;font-size:13px}
-.ptbl th{background:#374151;color:#fff;padding:8px 10px;font-weight:600;white-space:nowrap;text-align:left}
-.ptbl td{padding:7px 9px;border-bottom:1px solid #f3f4f6;vertical-align:top}
-.ptbl tr:last-child td{border-bottom:none}
-.ptbl tr:hover td{background:#f9fafb}
+.ptbl{width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed}
+.ptbl th{background:#374151;color:#fff;padding:7px 8px;font-weight:600;white-space:nowrap;text-align:left;overflow:hidden}
+.ptbl td{padding:6px 8px;border-bottom:none;vertical-align:top;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ptbl .grp-last td{border-bottom:2px solid #d1d5db}
-.ptbl .grp-inner td{border-bottom:1px dashed #ebebeb}
-.drv-sel{font-size:11px;padding:2px 5px;border:1px solid #d1d5db;border-radius:4px;cursor:pointer;background:#f9fafb;width:100%}
-.zchip{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-.no-addr{color:#dc2626;font-style:italic;font-size:12px}
-.addr{font-size:12px;color:#6b7280}
+.ptbl .grp-inner td{border-bottom:1px dashed #d1d5db}
+.drv-sel{font-size:11px;padding:2px 4px;border:1px solid #d1d5db;border-radius:4px;cursor:pointer;background:inherit;width:100%}
+.zchip{display:inline-block;padding:2px 7px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.no-addr{color:#dc2626;font-style:italic;font-size:12px;cursor:pointer}
+.addr-edit{cursor:pointer;color:#6b7280;font-size:12px}
+.addr-edit:hover{background:#eff6ff!important;outline:1px dashed #93c5fd}
 .note{font-size:12px;color:#6b7280}
 .cust{font-weight:700}
+/* SEARCH */
+.search-inp{width:100%;padding:7px 11px;border:1px solid #d1d5db;border-radius:8px;font:inherit;font-size:13px;box-sizing:border-box;margin-bottom:10px}
+.search-inp:focus{outline:none;border-color:#4472C4;box-shadow:0 0 0 2px rgba(68,114,196,.1)}
+/* STATS */
+.stat-body{margin-top:10px;overflow-x:auto}
+.stat-hdr{font-size:13px;font-weight:600;color:#4472C4;cursor:pointer;user-select:none;display:flex;align-items:center;gap:6px;margin-top:16px;padding:10px 14px;background:#fff;border:1px solid #e5e7eb;border-radius:10px}
 /* ACTIONS */
 .actions{display:flex;gap:10px;justify-content:flex-end;margin-top:4px}
 .abtn{padding:10px 22px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;border:none;transition:.15s}
@@ -196,11 +201,18 @@ input[type=file]{display:none}
     <b>⚠️ 주소 없는 거래처 (아래 탭에서 확인)</b>
     <span id="warn-txt"></span>
   </div>
+  <input type="text" id="search-inp" class="search-inp" placeholder="🔍  거래처명 / 품목명 검색..." oninput="filterSearch()" style="display:none">
   <div class="tabs" id="tabs"></div>
   <div id="tab-panels"></div>
   <div class="actions">
     <button class="abtn print-btn" onclick="window.print()">🖨 인쇄</button>
     <button class="abtn dl-btn" onclick="dlExcel()">📥 Excel 다운로드</button>
+  </div>
+  <div class="stat-hdr" id="stat-hdr" style="display:none" onclick="toggleStats()">
+    📊 일별 통계 <span id="stats-arrow" style="margin-left:auto">▼</span>
+  </div>
+  <div id="stats-body" class="stat-body" style="display:none">
+    <div id="stats-content"></div>
   </div>
 </div>
 
@@ -248,11 +260,13 @@ const DEFAULTS = [
 ];
 
 let masterLookup = null, orders = null, plan = null, specialPlan = [], secondaryPlan = [], dlDate = '', currentCfg = [];
+const tabMeta = new Map(); // panelId → {rows, showDrv, showReassign}
 
-const LS_DATA   = 'bp_master_v1';
-const LS_META   = 'bp_master_meta_v1';
-const LS_ORDERS = 'bp_orders_v1';
+const LS_DATA        = 'bp_master_v1';
+const LS_META        = 'bp_master_meta_v1';
+const LS_ORDERS      = 'bp_orders_v1';
 const LS_ORDERS_META = 'bp_orders_meta_v1';
+const LS_STATS       = 'bp_stats_v1';
 
 function saveMaster(lookup, filename) {
   try {
@@ -333,6 +347,91 @@ function reassign(name, newDriver) {
   const sy = window.scrollY;
   renderResults(currentCfg);
   window.scrollTo(0, sy);
+}
+
+function startEditAddr(cell) {
+  if (cell.querySelector('input')) return;
+  const name = cell.dataset.name;
+  const inp = document.createElement('input');
+  inp.type = 'text';
+  inp.value = cell.dataset.addr || '';
+  inp.style.cssText = 'width:100%;border:1px solid #4472C4;border-radius:3px;padding:2px 5px;font:inherit;font-size:12px;box-sizing:border-box;background:#fff';
+  let saved = false;
+  const save = () => {
+    if (saved) return; saved = true;
+    const v = inp.value.trim();
+    masterLookup[name] = v || null;
+    const meta = loadMasterFromStorage()?.meta || {};
+    saveMaster(masterLookup, meta.filename || '직접수정');
+    [plan, specialPlan, secondaryPlan].forEach(a => a.forEach(o => { if (o.거래처명 === name) o.배송주소 = v; }));
+    const sy = window.scrollY;
+    renderResults(currentCfg);
+    window.scrollTo(0, sy);
+  };
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); inp.blur(); }
+    if (e.key === 'Escape') { saved = true; renderResults(currentCfg); }
+  });
+  inp.addEventListener('blur', save);
+  cell.innerHTML = '';
+  cell.appendChild(inp);
+  inp.select();
+}
+
+function filterSearch() {
+  const term = ($('search-inp').value || '').trim().toLowerCase();
+  const active = document.querySelector('.tab-panel.active');
+  if (!active || !tabMeta.has(active.id)) return;
+  const { rows, showDrv, showReassign } = tabMeta.get(active.id);
+  const filtered = term
+    ? rows.filter(o => o.거래처명.toLowerCase().includes(term) || String(o.품목명||'').toLowerCase().includes(term))
+    : rows;
+  active.innerHTML = makePanelHTML(filtered, showDrv, showReassign);
+}
+
+function saveStats(date, entry) {
+  let hist = [];
+  try { hist = JSON.parse(localStorage.getItem(LS_STATS)) || []; } catch(e) {}
+  hist = hist.filter(s => s.date !== date);
+  hist.push({ date, ...entry });
+  hist.sort((a,b) => a.date.localeCompare(b.date));
+  try { localStorage.setItem(LS_STATS, JSON.stringify(hist.slice(-90))); } catch(e) {}
+}
+
+function toggleStats() {
+  const body = $('stats-body'), arrow = $('stats-arrow');
+  const open = body.style.display !== 'none';
+  body.style.display = open ? 'none' : 'block';
+  arrow.textContent = open ? '▼' : '▲';
+}
+
+function renderStats() {
+  let hist = [];
+  try { hist = JSON.parse(localStorage.getItem(LS_STATS)) || []; } catch(e) {}
+  if (!hist.length) { $('stat-hdr').style.display='none'; return; }
+  const drvNames = [...new Set(hist.flatMap(s => Object.keys(s.drivers||{})))];
+  let html = `<table class="ptbl" style="table-layout:auto"><thead><tr>
+    <th style="width:100px">날짜</th>
+    <th style="width:65px;text-align:center">거래처</th>
+    <th style="width:55px;text-align:center">총건</th>
+    ${drvNames.map(d=>`<th style="width:65px;text-align:center">${h(d)}</th>`).join('')}
+    <th style="width:50px;text-align:center">2차</th>
+    <th style="width:75px;text-align:center">능동미나리</th>
+  </tr></thead><tbody>`;
+  [...hist].reverse().forEach((s, i) => {
+    const bg = i%2===0 ? '#fff' : '#ebebeb';
+    html += `<tr>
+      <td style="background:${bg}">${h(s.date)}</td>
+      <td style="background:${bg};text-align:center">${s.totalCust}</td>
+      <td style="background:${bg};text-align:center">${s.totalRows}</td>
+      ${drvNames.map(d=>`<td style="background:${bg};text-align:center">${s.drivers?.[d]||'-'}</td>`).join('')}
+      <td style="background:${bg};text-align:center">${s.secondary||'-'}</td>
+      <td style="background:${bg};text-align:center">${s.special||'-'}</td>
+    </tr>`;
+  });
+  html += `</tbody></table>`;
+  $('stats-content').innerHTML = html;
+  $('stat-hdr').style.display = 'flex';
 }
 
 function toggleAddForm() {
@@ -511,41 +610,43 @@ function makePanelHTML(rows, showDrv, showReassign) {
     map.get(o.거래처명).items.push({ 품목명: String(o.품목명||''), 수량: String(o.수량||''), 구분: String(o.구분||'') });
   });
   const groups = [...map.values()];
-  const drvTh = showDrv ? `<th style="width:120px">담당기사</th>` : '';
-  const raTh = showReassign ? `<th style="width:80px">배정변경</th>` : '';
-  const hdr = `<th style="width:34px">#</th><th style="width:95px">구역</th>${drvTh}<th style="width:155px">거래처명</th><th>배송주소</th><th>품목명</th><th style="width:50px">수량</th><th style="width:55px">구분</th><th>비고</th>${raTh}`;
+  const drvTh = showDrv ? `<th style="width:80px">담당기사</th>` : '';
+  const raTh = showReassign ? `<th style="width:72px">배정변경</th>` : '';
+  const hdr = `<th style="width:28px">#</th><th style="width:88px">구역</th>${drvTh}<th style="width:130px">거래처명</th><th style="width:180px">배송주소</th><th>품목명</th><th style="width:42px">수량</th><th style="width:42px">구분</th><th style="width:65px">비고</th>${raTh}`;
   let seq = 0;
   const body = groups.map(({ meta: o, items }) => {
     seq++;
     const n = items.length;
     const rs = n > 1 ? ` rowspan="${n}"` : '';
-    const drvCell = showDrv ? `<td style="text-align:center"${rs}>${h(o.담당기사)}</td>` : '';
+    const bg = seq % 2 === 1 ? '#ffffff' : '#ebebeb';
+    const bgStyle = `background:${bg}`;
+    const drvCell = showDrv ? `<td style="${bgStyle};text-align:center"${rs}>${h(o.담당기사)}</td>` : '';
     const drvOpts = showReassign ? [...currentCfg.map(d=>d.name),'미배정']
       .map(d=>`<option value="${h(d)}"${o.담당기사===d?' selected':''}>${h(d)}</option>`).join('') : '';
     const raCell = showReassign
-      ? `<td style="vertical-align:middle"${rs}><select class="drv-sel" data-name="${h(o.거래처명)}" onchange="reassign(this.dataset.name,this.value)">${drvOpts}</select></td>`
+      ? `<td style="${bgStyle};vertical-align:middle"${rs}><select class="drv-sel" data-name="${h(o.거래처명)}" onchange="reassign(this.dataset.name,this.value)">${drvOpts}</select></td>`
       : '';
     return items.map((item, idx) => {
       const isLast = idx === n - 1;
       const cls = n > 1 ? (isLast ? ' class="grp-last"' : ' class="grp-inner"') : '';
       if (idx === 0) {
         return `<tr${cls}>
-          <td style="text-align:center;color:#9ca3af"${rs}>${seq}</td>
-          <td${rs}><span class="zchip" style="${ZONE_STYLE[o.구역]||ZONE_STYLE['기타']}">${h(o.구역)}</span></td>
+          <td style="${bgStyle};text-align:center;color:#9ca3af"${rs}>${seq}</td>
+          <td style="${bgStyle}"${rs}><span class="zchip" style="${ZONE_STYLE[o.구역]||ZONE_STYLE['기타']}">${h(o.구역)}</span></td>
           ${drvCell}
-          <td class="cust"${rs}>${h(o.거래처명)}</td>
-          <td class="addr"${rs}>${o.배송주소 ? h(o.배송주소) : '<span class="no-addr">주소 없음</span>'}</td>
-          <td>${h(item.품목명)}</td>
-          <td style="text-align:center">${h(item.수량)}</td>
-          <td style="text-align:center">${h(item.구분)}</td>
-          <td class="note"${rs}>${[o.비고1,o.비고2].filter(Boolean).map(h).join(' / ')}</td>
+          <td class="cust" style="${bgStyle}"${rs}>${h(o.거래처명)}</td>
+          <td class="addr-edit" style="${bgStyle}" ${rs} data-name="${h(o.거래처명)}" data-addr="${h(o.배송주소||'')}" onclick="startEditAddr(this)">${o.배송주소 ? h(o.배송주소) : '<span class="no-addr">+ 주소 추가</span>'}</td>
+          <td style="${bgStyle}">${h(item.품목명)}</td>
+          <td style="${bgStyle};text-align:center">${h(item.수량)}</td>
+          <td style="${bgStyle};text-align:center">${h(item.구분)}</td>
+          <td class="note" style="${bgStyle}"${rs}>${[o.비고1,o.비고2].filter(Boolean).map(h).join(' / ')}</td>
           ${raCell}
         </tr>`;
       }
       return `<tr${cls}>
-          <td>${h(item.품목명)}</td>
-          <td style="text-align:center">${h(item.수량)}</td>
-          <td style="text-align:center">${h(item.구분)}</td>
+          <td style="${bgStyle}">${h(item.품목명)}</td>
+          <td style="${bgStyle};text-align:center">${h(item.수량)}</td>
+          <td style="${bgStyle};text-align:center">${h(item.구분)}</td>
         </tr>`;
     }).join('');
   }).join('');
@@ -572,6 +673,13 @@ function generate(){
   specialPlan = allRows.filter(isSpecial);
   secondaryPlan = allRows.filter(o => !isSpecial(o) && isSecondary(o));
   plan = allRows.filter(o => !isSpecial(o) && !isSecondary(o));
+  saveStats(dlDate || new Date().toLocaleDateString('ko-KR'), {
+    totalCust: new Set([...plan,...specialPlan,...secondaryPlan].map(o=>o.거래처명)).size,
+    totalRows: plan.length + specialPlan.length + secondaryPlan.length,
+    drivers: Object.fromEntries(cfg.map(d=>[d.name, new Set(plan.filter(o=>o.담당기사===d.name).map(o=>o.거래처명)).size])),
+    secondary: new Set(secondaryPlan.map(o=>o.거래처명)).size,
+    special: new Set(specialPlan.map(o=>o.거래처명)).size,
+  });
   renderResults(cfg);
   $('results').style.display='block';
   $('results').scrollIntoView({behavior:'smooth', block:'start'});
@@ -580,6 +688,9 @@ function generate(){
 function renderResults(cfg){
   const sg=$('sum-grid'), tabs=$('tabs'), tp=$('tab-panels');
   sg.innerHTML = tabs.innerHTML = tp.innerHTML = '';
+  tabMeta.clear();
+  $('search-inp').value = '';
+  $('search-inp').style.display = 'block';
 
   const allDrvs = [...cfg.map(d=>d.name), '미배정'];
 
@@ -647,6 +758,7 @@ function renderResults(cfg){
     panelAll.className = 'tab-panel';
     panelAll.id = 'tab_all';
     panelAll.innerHTML = makePanelHTML(fullList, true, true);
+    tabMeta.set('tab_all', { rows: fullList, showDrv: true, showReassign: true });
     tp.appendChild(panelAll);
   }
 
@@ -674,6 +786,7 @@ function renderResults(cfg){
 
     const sorted = [...sub].sort((a,b)=>a.구역.localeCompare(b.구역)||a.거래처명.localeCompare(b.거래처명));
     panel.innerHTML = makePanelHTML(sorted, false, true);
+    tabMeta.set(sid, { rows: sorted, showDrv: false, showReassign: true });
     tp.appendChild(panel);
   });
 
@@ -681,7 +794,7 @@ function renderResults(cfg){
   if (secondaryPlan.length) {
     const btn2 = document.createElement('button');
     btn2.className = 'tab-btn';
-    btn2.textContent = `2차 별도 (${secondaryPlan.length})`;
+    btn2.textContent = `2차 (${secondaryPlan.length})`;
     btn2.style.borderBottomColor = '#b45309';
     btn2.onclick = () => {
       document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
@@ -704,7 +817,7 @@ function renderResults(cfg){
     const spIdx = drvList.length;
     const btn = document.createElement('button');
     btn.className = 'tab-btn';
-    btn.textContent = `능동미나리 별도 (${specialPlan.length})`;
+    btn.textContent = `능동미나리 (${specialPlan.length})`;
     btn.style.borderBottomColor = '#0891b2';
     btn.onclick = () => {
       document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
@@ -721,6 +834,7 @@ function renderResults(cfg){
     panel.innerHTML = makePanelHTML(sorted, false);
     tp.appendChild(panel);
   }
+  renderStats();
 }
 
 function dlExcel(){

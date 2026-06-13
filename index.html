@@ -669,10 +669,10 @@ function makePanelHTML(rows, showDrv, showReassign, showAddr = true, allowAddrAd
     map.get(o.거래처명).items.push({ 품목명: String(o.품목명||''), 수량: String(o.수량||''), 구분: String(o.구분||'') });
   });
   const groups = [...map.values()];
-  const drvTh = showDrv ? `<th style="width:72px">담당기사</th>` : '';
+  const drvTh = showDrv ? `<th style="width:68px">담당기사</th>` : '';
   const raTh = showReassign ? `<th style="width:72px">배정변경</th>` : '';
-  const addrTh = showAddr ? `<th>배송주소</th>` : '';
-  const hdr = `<th style="width:28px">#</th><th style="width:85px">구역</th>${drvTh}<th style="width:160px">거래처명</th>${addrTh}<th style="width:110px">품목명</th><th style="width:44px">수량</th><th style="width:44px">구분</th><th style="width:175px">비고</th>${raTh}`;
+  const addrTh = showAddr ? `<th style="width:195px">배송주소</th>` : '';
+  const hdr = `<th style="width:28px">#</th><th style="width:82px">구역</th>${drvTh}<th style="width:150px">거래처명</th>${raTh}<th>품목명</th><th style="width:44px">수량</th><th style="width:44px">구분</th><th style="width:140px">비고</th>${addrTh}`;
   let seq = 0;
   const body = groups.map(({ meta: o, items }) => {
     seq++;
@@ -695,17 +695,17 @@ function makePanelHTML(rows, showDrv, showReassign, showAddr = true, allowAddrAd
           <td style="${bgStyle}"${rs}><span class="zchip" style="${ZONE_STYLE[o.구역]||ZONE_STYLE['기타']}">${h(o.구역)}</span></td>
           ${drvCell}
           <td class="cust" style="${bgStyle}"${rs}>${h(o.거래처명)}</td>
+          ${raCell}
+          <td style="${bgStyle}">${h(item.품목명)}</td>
+          <td style="${bgStyle};text-align:center">${h(item.수량)}</td>
+          <td style="${bgStyle};text-align:center">${h(item.구분)}</td>
+          <td class="note" style="${bgStyle}"${rs}>${[o.비고1,o.비고2].filter(Boolean).map(h).join(' / ')}</td>
           ${showAddr ? (o.배송주소
             ? `<td class="addr-edit" style="${bgStyle}" ${rs} data-name="${h(o.거래처명)}" data-addr="${h(o.배송주소)}" onclick="startEditAddr(this)">${h(o.배송주소)}</td>`
             : allowAddrAdd
               ? `<td style="${bgStyle}" ${rs} data-name="${h(o.거래처명)}" onclick="openAddrSearch(this)"><span class="no-addr">+ 주소 검색</span></td>`
               : `<td style="${bgStyle}" ${rs}></td>`
           ) : ''}
-          <td style="${bgStyle}">${h(item.품목명)}</td>
-          <td style="${bgStyle};text-align:center">${h(item.수량)}</td>
-          <td style="${bgStyle};text-align:center">${h(item.구분)}</td>
-          <td class="note" style="${bgStyle}"${rs}>${[o.비고1,o.비고2].filter(Boolean).map(h).join(' / ')}</td>
-          ${raCell}
         </tr>`;
       }
       return `<tr${cls}>

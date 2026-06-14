@@ -81,13 +81,13 @@ input[type=file]{display:none}
 .sc .big{font-size:30px;font-weight:900;line-height:1}
 .sc .zns{font-size:11px;opacity:.85;margin-top:7px;line-height:1.6}
 /* TABS */
-.tabs{display:flex;gap:3px;flex-wrap:nowrap;overflow-x:auto;margin-bottom:0;padding-bottom:1px;-webkit-overflow-scrolling:touch}
+.tabs{display:flex;gap:3px;flex-wrap:nowrap;overflow-x:auto;margin-bottom:0;padding-bottom:1px;-webkit-overflow-scrolling:touch;position:sticky;top:0;z-index:50;background:#0d0d0d}
 .tabs::-webkit-scrollbar{height:0}
 .tab-btn{padding:9px 16px;border:1px solid #2e2e2e;border-bottom:none;border-radius:10px 10px 0 0;cursor:pointer;font-size:13px;font-weight:700;background:#181818;color:#999;transition:.12s;white-space:nowrap;flex-shrink:0}
 .tab-btn:hover{color:#ddd;background:#222}
 .tab-btn.active{background:#0d0d0d;color:#fff;border-color:#666;margin-bottom:-1px;z-index:1;position:relative}
 .tab-panel{background:#0d0d0d;border:1px solid #2e2e2e;border-radius:0 10px 10px 10px;padding:16px;margin-bottom:16px;display:none;overflow-x:auto}
-.tab-panel.active{display:block}
+.tab-panel.active{display:block;overflow-y:auto;max-height:calc(100vh - 54px)}
 /* TABLE */
 .ptbl{width:100%;border-collapse:collapse;font-size:15px}
 .ptbl th{background:#141414;color:#e0e0e0;padding:11px 12px;font-weight:700;white-space:nowrap;text-align:left;border-bottom:2px solid #383838}
@@ -148,6 +148,8 @@ button:not(:disabled):active{transform:scale(0.95)!important;transition:transfor
   .mob-nav-btn{flex:1;padding:13px 6px;font-size:14px;font-weight:700;cursor:pointer;background:none;border:none;color:#555;border-bottom:3px solid transparent;transition:.15s}
   .mob-nav-btn.active{color:#fff;border-bottom-color:#fff}
   .mob-upload-section{transition:.15s}
+  .tabs{top:46px}
+  .tab-panel.active{max-height:calc(100vh - 100px)}
   /* 모바일 리스트: 읽기 전용 (담당기사·배정변경·주소 숨김, 수평 스크롤) */
   .mob-hide{display:none!important}
   .ptbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -4px}
@@ -1611,7 +1613,8 @@ function makePanelHTML(rows, showDrv, showReassign, showAddr = true, allowAddrAd
       const iBg = (isAll && item._bg) ? item._bg : stripe;
       const iText = isAll ? (item._font || (item._bg ? autoTextColor(item._bg) : '#111111')) : null;
       const s = `background:${iBg}${iText ? `;color:${iText}` : ''}`;
-      const note = [item.비고1, item.비고2].filter(Boolean).map(h).join(' / ');
+      const noteRaw = [item.비고1, item.비고2].filter(Boolean).join(' / ');
+      const note = h(noteRaw.length > 20 ? noteRaw.slice(0, 20) + '…' : noteRaw);
       const manualItalic = o._manual ? ';font-style:italic' : '';
       const manualColor = o._manual ? ';color:#d97706' : '';
       if (idx === 0) {
@@ -1635,7 +1638,7 @@ function makePanelHTML(rows, showDrv, showReassign, showAddr = true, allowAddrAd
           <td style="${s};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${h(item.품목명)}</td>
           <td style="${s};text-align:center;white-space:nowrap">${h(item.수량)}</td>
           <td style="${s};text-align:center;white-space:nowrap">${h(item.구분)}</td>
-          <td class="note${noteHide}" style="${s}">${note}</td>
+          <td class="note${noteHide}" style="${s};white-space:nowrap">${note}</td>
           ${raCell}
           ${addrCell}
         </tr>`;
@@ -1652,7 +1655,7 @@ function makePanelHTML(rows, showDrv, showReassign, showAddr = true, allowAddrAd
           <td style="${s};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${h(item.품목명)}</td>
           <td style="${s};text-align:center;white-space:nowrap">${h(item.수량)}</td>
           <td style="${s};text-align:center;white-space:nowrap">${h(item.구분)}</td>
-          <td class="note${noteHide}" style="${s}">${note}</td>
+          <td class="note${noteHide}" style="${s};white-space:nowrap">${note}</td>
           ${raCell}
           ${addrCell}
         </tr>`;

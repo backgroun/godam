@@ -89,7 +89,7 @@ input[type=file]{display:none}
 .tab-panel{background:#0d0d0d;border:1px solid #2e2e2e;border-radius:0 10px 10px 10px;padding:16px;margin-bottom:16px;display:none;overflow-x:auto}
 .tab-panel.active{display:block;overflow-y:auto;max-height:calc(100vh - 54px)}
 /* TABLE */
-.ptbl{width:100%;border-collapse:collapse;font-size:15px}
+.ptbl{width:100%;border-collapse:separate;border-spacing:0;font-size:15px}
 .ptbl th{background:#141414;color:#e0e0e0;padding:11px 12px;font-weight:700;white-space:nowrap;text-align:left;border-bottom:2px solid #383838;border-right:1px solid #2e2e2e;position:sticky;top:0;z-index:10}
 .ptbl th:last-child{border-right:none}
 .ptbl td{padding:10px 11px;border-bottom:none;vertical-align:top;word-break:break-word;overflow-wrap:break-word;color:#d8d8d8;border-right:1px solid #2e2e2e}
@@ -1617,7 +1617,8 @@ function makePanelHTML(rows, showDrv, showReassign, showAddr = true, allowAddrAd
       const iText = isAll ? (item._font || (item._bg ? autoTextColor(item._bg) : '#111111')) : null;
       const s = `background:${iBg}${iText ? `;color:${iText}` : ''}`;
       const noteRaw = [item.비고1, item.비고2].filter(Boolean).join(' / ');
-      const note = h(noteRaw.length > 20 ? noteRaw.slice(0, 20) + '…' : noteRaw);
+      const noteChunks = []; for (let _i=0;_i<noteRaw.length;_i+=20) noteChunks.push(h(noteRaw.slice(_i,_i+20)));
+      const note = noteChunks.join('<br>');
       const manualItalic = o._manual ? ';font-style:italic' : '';
       const manualColor = o._manual ? ';color:#d97706' : '';
       if (idx === 0) {
@@ -1641,7 +1642,7 @@ function makePanelHTML(rows, showDrv, showReassign, showAddr = true, allowAddrAd
           <td style="${s};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${h(item.품목명)}</td>
           <td style="${s};text-align:center;white-space:nowrap">${h(item.수량)}</td>
           <td style="${s};text-align:center;white-space:nowrap">${h(item.구분)}</td>
-          <td class="note${noteHide}" style="${s};white-space:nowrap">${note}</td>
+          <td class="note${noteHide}" style="${s}">${note}</td>
           ${raCell}
           ${addrCell}
         </tr>`;
@@ -1658,7 +1659,7 @@ function makePanelHTML(rows, showDrv, showReassign, showAddr = true, allowAddrAd
           <td style="${s};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${h(item.품목명)}</td>
           <td style="${s};text-align:center;white-space:nowrap">${h(item.수량)}</td>
           <td style="${s};text-align:center;white-space:nowrap">${h(item.구분)}</td>
-          <td class="note${noteHide}" style="${s};white-space:nowrap">${note}</td>
+          <td class="note${noteHide}" style="${s}">${note}</td>
           ${raCell}
           ${addrCell}
         </tr>`;

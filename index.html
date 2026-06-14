@@ -235,12 +235,12 @@ button:not(:disabled):active{transform:scale(0.95)!important;transition:transfor
   .cust{font-size:13px}
   .note{font-size:12px}
   .zchip{font-size:11px;padding:2px 6px}
-  #search-row{flex-wrap:wrap;gap:6px}
-  .search-inp{font-size:15px;padding:11px 12px}
-  .search-btn{padding:11px 16px;font-size:14px;min-height:44px}
-  .addr-toggle-btn{padding:11px 12px;font-size:13px;min-height:44px}
-  /* 액션 버튼 2×2 그리드 */
-  .actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+  #search-row{flex-wrap:nowrap;gap:6px}
+  .search-inp{font-size:15px;padding:11px 12px;flex:1;width:auto;min-width:0}
+  .search-btn{padding:11px 16px;font-size:14px;min-height:44px;flex-shrink:0}
+  .addr-toggle-btn{display:none!important}
+  /* 액션 버튼 모바일 전체 숨김 */
+  .actions{display:none!important}
   .actions .abtn{padding:13px 8px;font-size:14px;text-align:center;min-height:48px}
   .dtbl{font-size:13px}
   .dtbl th,.dtbl td{padding:7px 8px}

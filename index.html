@@ -1379,30 +1379,121 @@ function setupDnD(){
   });
 }
 
+async function readColorMap(buffer) {
+  async function unzip(buf, name) {
+    const b = new Uint8Array(buf), dv = new DataView(buf);
+    let eo = -1;
+    for (let i = b.length - 22; i >= Math.max(0, b.length - 65558); i--)
+      if (b[i]===80&&b[i+1]===75&&b[i+2]===5&&b[i+3]===6){eo=i;break;}
+    if (eo<0) return null;
+    const cdSz=dv.getUint32(eo+12,true), cdOff=dv.getUint32(eo+16,true);
+    const dec=new TextDecoder();
+    for (let p=cdOff; p+46<=cdOff+cdSz;) {
+      if (dv.getUint32(p,true)!==0x02014B50) break;
+      const m=dv.getUint16(p+10,true), cs=dv.getUint32(p+20,true);
+      const fl=dv.getUint16(p+28,true), el=dv.getUint16(p+30,true), cl=dv.getUint16(p+32,true);
+      const lo=dv.getUint32(p+42,true);
+      if (dec.decode(b.subarray(p+46,p+46+fl))===name) {
+        const lfl=dv.getUint16(lo+26,true), lel=dv.getUint16(lo+28,true);
+        const ds=lo+30+lfl+lel, cd=b.subarray(ds,ds+cs);
+        if (m===0) return dec.decode(cd);
+        if (m===8) {
+          const s=new DecompressionStream('deflate-raw'), w=s.writable.getWriter();
+          w.write(cd); w.close();
+          const chunks=[]; const r=s.readable.getReader();
+          for(;;){const{value,done}=await r.read();if(done)break;chunks.push(value);}
+          const tot=chunks.reduce((a,c)=>a+c.length,0), out=new Uint8Array(tot); let off=0;
+          for(const c of chunks){out.set(c,off);off+=c.length;}
+          return dec.decode(out);
+        }
+        return null;
+      }
+      p+=46+fl+el+cl;
+    }
+    return null;
+  }
+  try {
+    const [sXml, wXml] = await Promise.all([
+      unzip(buffer,'xl/styles.xml'),
+      unzip(buffer,'xl/worksheets/sheet1.xml')
+    ]);
+    if (!sXml || !wXml) return {};
+    const OFFICE_THEME=['FFFFFF','000000','E7E6E6','44546A','4472C4','ED7D31','A5A5A5','FFC000','5B9BD5','FF0000'];
+    // fonts
+    const fontColors=[];
+    const fontsBlock=sXml.match(/<fonts[^>]*>([\s\S]*?)<\/fonts>/)?.[1]||'';
+    for (const [,fc] of fontsBlock.matchAll(/<font>([\s\S]*?)<\/font>/g)) {
+      const ct=fc.match(/<color([^>]*)\/>/);
+      if (ct) {
+        const at=ct[1];
+        const rgb=(at.match(/\brgb="([0-9A-Fa-f]{6,8})"/) ||[])[1];
+        const th=(at.match(/\btheme="(\d+)"/) ||[])[1];
+        const tint=parseFloat((at.match(/\btint="([^"]*)"/) ||[])[1]||'0');
+        if (rgb) { const h6=rgb.length>6?rgb.slice(-6):rgb; fontColors.push('#'+h6.toUpperCase()); }
+        else if (th!=null) {
+          const base=OFFICE_THEME[+th]||'000000';
+          if (tint) {
+            const r2=parseInt(base.slice(0,2),16), g2=parseInt(base.slice(2,4),16), b2=parseInt(base.slice(4,6),16);
+            const ap=(c,t)=>t<0?Math.round(c*(1+t)):Math.round(c+(255-c)*t);
+            fontColors.push('#'+[ap(r2,tint),ap(g2,tint),ap(b2,tint)].map(x=>x.toString(16).padStart(2,'0').toUpperCase()).join(''));
+          } else { fontColors.push('#'+base); }
+        } else { fontColors.push(null); }
+      } else { fontColors.push(null); }
+    }
+    // fills
+    const fillColors=[];
+    const fillsBlock=sXml.match(/<fills[^>]*>([\s\S]*?)<\/fills>/)?.[1]||'';
+    for (const [,fc] of fillsBlock.matchAll(/<fill>([\s\S]*?)<\/fill>/g)) {
+      const fgT=fc.match(/<fgColor([^>]*)\/>/);
+      if (fgT) {
+        const at=fgT[1];
+        const rgb=(at.match(/\brgb="([0-9A-Fa-f]{6,8})"/) ||[])[1];
+        const th=(at.match(/\btheme="(\d+)"/) ||[])[1];
+        if (rgb) { const h6=rgb.length>6?rgb.slice(-6):rgb; fillColors.push('#'+h6.toUpperCase()); }
+        else if (th!=null) { fillColors.push('#'+(OFFICE_THEME[+th]||'000000')); }
+        else { fillColors.push(null); }
+      } else { fillColors.push(null); }
+    }
+    // cellXfs
+    const xfFontIds=[], xfFillIds=[];
+    const xfsBlock=sXml.match(/<cellXfs[^>]*>([\s\S]*?)<\/cellXfs>/)?.[1]||'';
+    for (const [xfTag] of xfsBlock.matchAll(/<xf[^>]*/g)) {
+      xfFontIds.push(+((xfTag.match(/\bfontId="(\d+)"/) ||[])[1]||0));
+      xfFillIds.push(+((xfTag.match(/\bfillId="(\d+)"/) ||[])[1]||0));
+    }
+    // cell → color
+    const colorMap={};
+    for (const [,cTag] of wXml.matchAll(/<c ([^>]*(?:\/?>|>))/g)) {
+      const cellRef=(cTag.match(/\br="([A-Z]+\d+)"/) ||[])[1];
+      const sAttr=(cTag.match(/\bs="(\d+)"/) ||[])[1];
+      if (!cellRef || sAttr==null) continue;
+      const xfIdx=+sAttr;
+      const fColor=fontColors[xfFontIds[xfIdx]]||null;
+      const bColor=fillColors[xfFillIds[xfIdx]]||null;
+      const entry={};
+      if (fColor && !/^#0{6}$/i.test(fColor) && !/^#F{6}$/i.test(fColor)) entry.font=fColor;
+      if (bColor && !/^#F{6}$/i.test(bColor) && !/^#0{6}$/i.test(bColor)) entry.bg=bColor;
+      if (Object.keys(entry).length) colorMap[cellRef]=entry;
+    }
+    return colorMap;
+  } catch(e) { console.warn('[readColorMap]',e); return {}; }
+}
+
 function handleFile(file, type){
   if (!file) return;
   if (typeof XLSX === 'undefined') { alert('라이브러리 로딩 중입니다. 잠시 후 다시 시도하세요.'); return; }
   const reader = new FileReader();
-  reader.onload = e => {
+  reader.onload = async e => {
     try {
-      const wb = XLSX.read(new Uint8Array(e.target.result), {type:'array', raw:false, cellStyles:true});
-      // ── 구조 디버그 (1회) ──
-      try {
-        console.log('[wb keys]', Object.keys(wb));
-        const S = wb.Styles;
-        console.log('[wb.Styles]', S ? JSON.stringify(S).slice(0,600) : 'undefined');
-        const ws0 = wb.Sheets[wb.SheetNames[0]];
-        ['B2','B3','B4','B5','B6','B7','B8'].forEach(r => {
-          const c = ws0[r];
-          if (c) console.log('[cell '+r+']', JSON.stringify(c).slice(0,200));
-        });
-      } catch(e) { console.warn('debug err', e); }
+      const buf = e.target.result;
+      const colorMap = type === 'master' ? {} : await readColorMap(buf);
+      const wb = XLSX.read(new Uint8Array(buf), {type:'array', raw:false});
       if (type === 'master'){
         masterLookup = parseMaster(wb);
         saveMaster(masterLookup, file.name);
         showCachedMaster({ filename: file.name, count: Object.keys(masterLookup).length, date: new Date().toLocaleDateString('ko-KR') });
       } else {
-        const r = parseOrders(wb);
+        const r = parseOrders(wb, colorMap);
         orders = r.orders; dlDate = r.date;
         const oDate = dlDate || new Date().toLocaleDateString('ko-KR');
         saveOrders(orders, file.name, oDate);
@@ -1441,11 +1532,10 @@ function flexCol(row, candidates){
   return null;
 }
 
-function parseOrders(wb){
+function parseOrders(wb, colorMap={}){
   const ws = wb.Sheets[wb.SheetNames[0]];
   const allRows = XLSX.utils.sheet_to_json(ws, {header:1, defval:null, raw:false});
   if (!allRows.length) return {orders:[], date:''};
-  // 헤더 행 탐색 (거래처명 포함된 첫 행)
   let hi = 0;
   for (let i = 0; i < Math.min(allRows.length, 5); i++) {
     if ((allRows[i]||[]).some(c => String(c||'').trim() === '거래처명')) { hi = i; break; }
@@ -1460,61 +1550,10 @@ function parseOrders(wb){
     const n = obj['거래처명'];
     if (!n || !String(n).trim() || ['nan','null','undefined'].includes(String(n).trim().toLowerCase())) continue;
     obj._rowIdx = i;
-    // 셀 색상 읽기: cell.s = XF 인덱스(숫자) → wb.Styles.CellXf/Fills/Fonts 직접 조회
     const cellRef = XLSX.utils.encode_cell({r: i, c: nameCol >= 0 ? nameCol : 0});
-    const cell = ws[cellRef];
-    let fill = null, font = null;
-    if (cell && typeof cell.s === 'number' && wb.Styles) {
-      try {
-        const S = wb.Styles;
-        const xfs   = S.CellXf || S.xf || S.cellXf || [];
-        const xf    = xfs[cell.s];
-        if (xf) {
-          const fills = S.Fills  || S.fills  || [];
-          const fonts = S.Fonts  || S.fonts  || [];
-          if (xf.fillId != null) fill = fills[xf.fillId] || null;
-          if (xf.fontId != null) font = fonts[xf.fontId] || null;
-        }
-        // wb.Styles 구조 첫 행 디버그
-        if (i === hi + 1) {
-          console.log('[wb.Styles keys]', Object.keys(S));
-          console.log('[xf[0]]',  JSON.stringify(xfs[0])?.slice(0,200));
-          console.log('[fills[0]]', JSON.stringify((S.Fills||S.fills||[])[0])?.slice(0,200));
-          console.log('[fonts sample]', (S.Fonts||S.fonts||[]).slice(0,5).map(f=>JSON.stringify(f)).join(' | '));
-        }
-      } catch(e) { console.warn('[xlsx style err]', e); }
-    }
-    // 디버그: 첫 6행 색상 로그
-    if (i <= hi + 6) console.log('[xlsx]', cellRef, 'xf=', cell?.s, '| fill=', JSON.stringify(fill)?.slice(0,60), '| font=', JSON.stringify(font)?.slice(0,80));
-    const OFFICE_THEME = ['FFFFFF','000000','E7E6E6','44546A','4472C4','ED7D31','A5A5A5','FFC000','5B9BD5','FF0000'];
-    // 배경색
-    const fgClr = fill?.fgColor;
-    if (fgClr) {
-      let bgRgb = null;
-      const fgVal = fgClr.rgb || fgClr.argb;
-      if (fgVal) bgRgb = (fgVal.length > 6 ? fgVal.slice(-6) : fgVal).toUpperCase();
-      else if (fgClr.indexed != null && fgClr.indexed < EXCEL_INDEXED.length) bgRgb = EXCEL_INDEXED[fgClr.indexed].slice(1);
-      else if (fgClr.theme != null && fgClr.theme < OFFICE_THEME.length && !fgClr.tint) bgRgb = OFFICE_THEME[fgClr.theme];
-      if (bgRgb && !/^F{6}$/.test(bgRgb) && !/^0{6}$/.test(bgRgb)) obj._bg = '#' + bgRgb;
-    }
-    // 폰트색
-    const fc = font?.color;
-    if (fc) {
-      let fRgb = null;
-      const fcVal = fc.rgb || fc.argb;
-      if (fcVal) fRgb = (fcVal.length > 6 ? fcVal.slice(-6) : fcVal).toUpperCase();
-      else if (fc.indexed != null && fc.indexed < EXCEL_INDEXED.length && fc.indexed > 1) fRgb = EXCEL_INDEXED[fc.indexed].slice(1);
-      else if (fc.theme != null && fc.theme < OFFICE_THEME.length) {
-        const base = OFFICE_THEME[fc.theme];
-        if (fc.tint && fc.tint !== 0) {
-          const t = fc.tint;
-          const r2=parseInt(base.slice(0,2),16), g2=parseInt(base.slice(2,4),16), b2=parseInt(base.slice(4,6),16);
-          const ap = (c,t) => t<0 ? Math.round(c*(1+t)) : Math.round(c+(255-c)*t);
-          fRgb = [ap(r2,t),ap(g2,t),ap(b2,t)].map(x=>x.toString(16).padStart(2,'0').toUpperCase()).join('');
-        } else { fRgb = base; }
-      }
-      if (fRgb && !/^0{6}$/.test(fRgb) && !/^F{6}$/.test(fRgb)) obj._font = '#' + fRgb;
-    }
+    const clr = colorMap[cellRef] || {};
+    if (clr.bg) obj._bg = clr.bg;
+    if (clr.font) obj._font = clr.font;
     orders.push(obj);
   }
   let date = new Date().toISOString().slice(0,10).replace(/-/g,'');

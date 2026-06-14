@@ -71,10 +71,12 @@ input[type=file]{display:none}
 .action-btn:hover{background:#262626;color:#fff;border-color:#555}
 /* RESULTS */
 .sum-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:8px;margin-bottom:16px}
-.sc{padding:14px 16px;border-radius:14px;color:#fff;cursor:pointer;transition:transform .12s,box-shadow .12s;position:relative}
-.sc:hover{transform:translateY(-3px);box-shadow:0 10px 28px rgba(0,0,0,.6)}
-.share-btn{background:rgba(255,255,255,.22);border:none;border-radius:7px;padding:7px 9px;cursor:pointer;font-size:16px;line-height:1;color:#fff;transition:.12s;-webkit-tap-highlight-color:transparent;display:inline-flex;align-items:center;justify-content:center;min-width:38px;min-height:38px;user-select:none;pointer-events:all}
-.share-btn:hover{background:rgba(255,255,255,.4)}
+.sc{padding:14px 16px;border-radius:14px;color:#fff;cursor:default;transition:transform .12s,box-shadow .12s;display:flex;flex-direction:column}
+.sc:hover{transform:translateY(-2px);box-shadow:0 8px 22px rgba(0,0,0,.5)}
+.sc-btns{display:flex;gap:6px;margin-top:10px}
+.share-btn{background:rgba(255,255,255,.22);border:none;border-radius:8px;padding:10px 8px;cursor:pointer;font-size:14px;line-height:1;color:#fff;transition:.12s;-webkit-tap-highlight-color:transparent;display:inline-flex;align-items:center;justify-content:center;gap:5px;flex:1;min-height:44px;font-weight:700;user-select:none;pointer-events:all;white-space:nowrap}
+.share-btn:hover{background:rgba(255,255,255,.38)}
+.share-btn:active{transform:scale(0.96)}
 .sc .drv{font-size:12px;font-weight:700;opacity:.9;margin-bottom:4px}
 .sc .big{font-size:30px;font-weight:900;line-height:1}
 .sc .zns{font-size:11px;opacity:.85;margin-top:7px;line-height:1.6}
@@ -187,6 +189,8 @@ button:not(:disabled):active{transform:scale(0.95)!important;transition:transfor
   .sc .drv{font-size:11px}
   .sc .big{font-size:22px}
   .sc .zns{display:none}
+  .sc-btns{gap:4px;margin-top:8px}
+  .share-btn{font-size:12px;padding:8px 4px;min-height:40px}
   .tabs{flex-wrap:nowrap;overflow-x:auto;gap:3px;padding-bottom:2px;-webkit-overflow-scrolling:touch}
   .tabs::-webkit-scrollbar{height:0}
   .tab-btn{padding:9px 14px;font-size:13px;white-space:nowrap}
@@ -1512,9 +1516,9 @@ function makePanelHTML(rows, showDrv, showReassign, showAddr = true, allowAddrAd
           <td style="${s}"><span class="zchip" style="${ZONE_STYLE[o.구역]||ZONE_STYLE['기타']}">${h(o.구역)}</span></td>
           ${drvCell}
           <td class="cust" style="${s}${manualItalic}">${custDisplay(o.거래처명)}</td>
-          <td style="${s}">${h(item.품목명)}</td>
-          <td style="${s};text-align:center">${h(item.수량)}</td>
-          <td style="${s};text-align:center">${h(item.구분)}</td>
+          <td style="${s};white-space:nowrap">${h(item.품목명)}</td>
+          <td style="${s};text-align:center;white-space:nowrap">${h(item.수량)}</td>
+          <td style="${s};text-align:center;white-space:nowrap">${h(item.구분)}</td>
           <td class="note" style="${s}">${note}</td>
           ${raCell}
           ${addrCell}
@@ -1529,9 +1533,9 @@ function makePanelHTML(rows, showDrv, showReassign, showAddr = true, allowAddrAd
           <td style="${s}"></td>
           ${drvCell}
           <td style="${s}"></td>
-          <td style="${s}">${h(item.품목명)}</td>
-          <td style="${s};text-align:center">${h(item.수량)}</td>
-          <td style="${s};text-align:center">${h(item.구분)}</td>
+          <td style="${s};white-space:nowrap">${h(item.품목명)}</td>
+          <td style="${s};text-align:center;white-space:nowrap">${h(item.수량)}</td>
+          <td style="${s};text-align:center;white-space:nowrap">${h(item.구분)}</td>
           <td class="note" style="${s}">${note}</td>
           ${raCell}
           ${addrCell}
@@ -1597,13 +1601,13 @@ function renderResults(cfg){
     const sid = 'tab_' + drv.replace(/[^a-zA-Z0-9가-힣]/g,'_');
     const div = document.createElement('div');
     div.className = `sc ${clr}`;
-    div.innerHTML = `<div style="position:absolute;top:8px;right:8px;display:flex;gap:4px">
-        <button class="share-btn" onclick="openMapView('${h(drv)}')" title="배송지 지도">🗺</button>
-        <button class="share-btn" onclick="openShareCard('${h(drv)}')" title="배송리스트 저장">📷</button>
-      </div>
-      <div class="drv">${h(drv)}</div>
+    div.innerHTML = `<div class="drv">${h(drv)}</div>
       <div class="big">${customers}</div>
-      ${d ? `<div class="zns">${d.zones.join(' · ')}</div>` : ''}`;
+      ${d ? `<div class="zns">${d.zones.join(' · ')}</div>` : ''}
+      <div class="sc-btns">
+        <button class="share-btn" onclick="event.stopPropagation();openMapView('${h(drv)}')">🗺 지도</button>
+        <button class="share-btn" onclick="event.stopPropagation();openShareCard('${h(drv)}')">📷 캡쳐</button>
+      </div>`;
     sg.appendChild(div);
   });
 
@@ -1615,7 +1619,7 @@ function renderResults(cfg){
   );
   if (fullList.length) {
     const btnAll = document.createElement('button');
-    btnAll.className = 'tab-btn';
+    btnAll.className = 'tab-btn active';
     btnAll.dataset.panel = 'tab_all';
     btnAll.textContent = `전체 (${new Set(fullList.map(o=>o.거래처명)).size})`;
     btnAll.style.borderBottomColor = '#374151';
@@ -1628,7 +1632,7 @@ function renderResults(cfg){
     tabs.appendChild(btnAll);
 
     const panelAll = document.createElement('div');
-    panelAll.className = 'tab-panel all-panel';
+    panelAll.className = 'tab-panel all-panel active';
     panelAll.id = 'tab_all';
     panelAll.innerHTML = makePanelHTML(fullList, true, true, !addrHidden, true, true);
     tabMeta.set('tab_all', { rows: fullList, showDrv: true, showReassign: true, isAll: true });
@@ -1643,7 +1647,7 @@ function renderResults(cfg){
     const sid = 'tab_' + drv.replace(/[^a-zA-Z0-9가-힣]/g,'_');
 
     const btn = document.createElement('button');
-    btn.className = 'tab-btn' + (idx===0?' active':'');
+    btn.className = 'tab-btn';
     btn.dataset.panel = sid;
     btn.textContent = `${drv} (${cnt})`;
     btn.onclick = () => {
@@ -1655,7 +1659,7 @@ function renderResults(cfg){
     tabs.appendChild(btn);
 
     const panel = document.createElement('div');
-    panel.className = 'tab-panel' + (idx===0?' active':'');
+    panel.className = 'tab-panel';
     panel.id = sid;
 
     const sorted = [...sub].sort((a,b)=>a.구역.localeCompare(b.구역)||(a.배송주소||'').localeCompare(b.배송주소||'')||a.거래처명.localeCompare(b.거래처명));
@@ -1922,6 +1926,14 @@ function mobSwitch(tab) {
     if (listEl) listEl.style.display = 'block';
     $('mob-btn-upload').classList.remove('active');
     $('mob-btn-list').classList.add('active');
+    // 모바일에서 리스트 탭 패널 위치로 스크롤
+    if (isMob) {
+      requestAnimationFrame(() => {
+        const activePanel = document.querySelector('.tab-panel.active');
+        if (activePanel) activePanel.scrollIntoView({behavior:'smooth', block:'start'});
+        else if (listEl) listEl.scrollIntoView({behavior:'smooth', block:'start'});
+      });
+    }
   }
 }
 

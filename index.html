@@ -671,7 +671,8 @@ function closeModal(id) {
   document.body.style.overflow = '';
 }
 
-let mapDrvFilter = null, _leafletMap = null, _leafletReady = false;
+let mapDrvFilter = null, _leafletMap = null;
+let _lfReady = false, _kkReady = false, _kkFailed = false;
 const LS_GEOCACHE = 'bp_geocache_v1';
 
 function loadGeoCache() {
@@ -686,15 +687,23 @@ function clearGeoCache() {
   initMap();
 }
 
+function _mapBoot() {
+  // Kakao SDK 로드 성공 시 maps.load() 초기화, 실패 시 바로 initMap
+  if (_kkReady && !_kkFailed) { kakao.maps.load(initMap); }
+  else { initMap(); }
+}
+function _mapCheck() {
+  if (_lfReady && (_kkReady || _kkFailed)) _mapBoot();
+}
+
 function openMapView(drvFilter) {
   mapDrvFilter = drvFilter || null;
   const title = mapDrvFilter ? `🗺 ${mapDrvFilter} 배송지` : '🗺 배송지 지도';
   document.querySelector('#map-modal .modal-hdr span').textContent = title;
   openModal('map-modal');
-  const container = $('kakao-map');
-  container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#888;font-size:15px">지도 로딩 중...</div>';
+  $('kakao-map').innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#888;font-size:15px">지도 로딩 중...</div>';
 
-  if (_leafletReady) { initMap(); return; }
+  if (_lfReady && (_kkReady || _kkFailed)) { _mapBoot(); return; }
 
   // Leaflet CSS
   if (!document.querySelector('link[data-lf]')) {
@@ -704,13 +713,23 @@ function openMapView(drvFilter) {
     document.head.appendChild(css);
   }
   // Leaflet JS
-  const s = document.createElement('script');
-  s.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-  s.onload = () => { _leafletReady = true; initMap(); };
-  s.onerror = () => {
-    container.innerHTML = '<div style="padding:40px;color:#f87171;font-size:14px">지도 라이브러리 로드 실패.<br>인터넷 연결을 확인하세요.</div>';
-  };
-  document.head.appendChild(s);
+  if (!document.querySelector('script[data-lf]')) {
+    const s = document.createElement('script');
+    s.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+    s.setAttribute('data-lf', '1');
+    s.onload = () => { _lfReady = true; _mapCheck(); };
+    s.onerror = () => { $('kakao-map').innerHTML = '<div style="padding:40px;color:#f87171;font-size:14px">지도 라이브러리 로드 실패.</div>'; };
+    document.head.appendChild(s);
+  }
+  // Kakao Maps SDK (지오코딩 전용, autoload=false)
+  if (!document.querySelector('script[data-ks]')) {
+    const ks = document.createElement('script');
+    ks.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${KAKAO_MAP_KEY}&libraries=services&autoload=false`;
+    ks.setAttribute('data-ks', '1');
+    ks.onload = () => { _kkReady = true; _mapCheck(); };
+    ks.onerror = () => { console.warn('[지도] 카카오 SDK 로드 실패 → REST 폴백'); _kkFailed = true; _mapCheck(); };
+    document.head.appendChild(ks);
+  }
 }
 
 function initMap() {
@@ -773,45 +792,56 @@ function initMap() {
   let done = 0, qIdx = 0, errCount = 0;
   const CONCURRENCY = 5;
 
-  function kakaoGeoFetch(type, addr) {
-    const t = type.replace('search/', '');
-    return fetch(`/api/geo?type=${t}&q=${encodeURIComponent(addr)}`)
-      .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
-      .then(data => data?.documents?.[0] || null);
+  // 지오코딩: 카카오 SDK 우선, 실패 시 REST API 폴백
+  function geoOne(addr) {
+    if (_kkReady && !_kkFailed && window.kakao?.maps?.services) {
+      return new Promise(resolve => {
+        new kakao.maps.services.Geocoder().addressSearch(addr, (res, st) => {
+          if (st === kakao.maps.services.Status.OK) {
+            resolve({ lat: parseFloat(res[0].y), lng: parseFloat(res[0].x) });
+          } else {
+            new kakao.maps.services.Places().keywordSearch(addr, (r2, s2) => {
+              resolve(s2 === kakao.maps.services.Status.OK
+                ? { lat: parseFloat(r2[0].y), lng: parseFloat(r2[0].x) }
+                : null);
+            });
+          }
+        });
+      });
+    }
+    // REST API 폴백
+    const restGeo = t => fetch(`/api/geo?type=${t}&q=${encodeURIComponent(addr)}`)
+      .then(r => r.ok ? r.json() : Promise.reject())
+      .then(d => d?.documents?.[0] ? { lat: parseFloat(d.documents[0].y), lng: parseFloat(d.documents[0].x) } : null)
+      .catch(() => null);
+    return restGeo('address').then(r => r || restGeo('keyword'));
   }
 
   function geocodeOne() {
     if (qIdx >= needFetch.length) return;
     const [addr, info] = needFetch[qIdx++];
-
-    kakaoGeoFetch('search/address', addr)
-    .then(doc => doc || kakaoGeoFetch('search/keyword', addr))
-    .then(doc => {
-      if (doc) {
-        const lat = parseFloat(doc.y), lng = parseFloat(doc.x);
-        cache[addr] = { lat, lng };
-        addMarker(addr, info, lat, lng);
+    geoOne(addr)
+    .then(result => {
+      if (result) {
+        cache[addr] = result;
+        addMarker(addr, info, result.lat, result.lng);
         if (bounds.length) _leafletMap.fitBounds(bounds, { padding: [40, 40] });
       } else {
         errCount++;
         console.warn('[지도] 주소 변환 실패:', addr);
       }
     })
-    .catch(err => {
-      errCount++;
-      console.error('[지도] 지오코딩 오류:', addr, err.message);
-    })
+    .catch(err => { errCount++; console.error('[지도] 오류:', addr, err?.message); })
     .finally(() => {
       done++;
       if (done >= needFetch.length) {
         saveGeoCache(cache);
-        const errMsg = errCount > 0 ? `, ${errCount}개 실패` : '';
-        prog.textContent = `완료 (${bounds.length}개 표시${errMsg})`;
+        const em = errCount > 0 ? `, ${errCount}개 실패` : '';
+        prog.textContent = `완료 (${bounds.length}개 표시${em})`;
         if (errCount > 0) prog.style.background = 'rgba(180,30,30,.85)';
         setTimeout(() => prog.remove(), errCount > 0 ? 5000 : 1500);
       } else {
-        const errMsg = errCount > 0 ? ` [${errCount}실패]` : '';
-        prog.textContent = `${done}/${needFetch.length} 주소 변환 중...${errMsg}`;
+        prog.textContent = `${done}/${needFetch.length} 주소 변환 중...${errCount > 0 ? ` [${errCount}실패]` : ''}`;
         geocodeOne();
       }
     });

@@ -588,7 +588,7 @@ function openShareCard(drvName) {
   const allPlan = [...plan, ...specialPlan, ...secondaryPlan];
   const zoneRank = z => { const i = ZONE_ORDER.indexOf(z); return i >= 0 ? i : 99; };
   const sub = allPlan.filter(o => o.담당기사 === drvName)
-    .sort((a, b) => zoneRank(a.구역) - zoneRank(b.구역) || a.거래처명.localeCompare(b.거래처명) || (a._rowIdx||0) - (b._rowIdx||0));
+    .sort((a, b) => zoneRank(a.구역) - zoneRank(b.구역) || (a.배송주소||'').localeCompare(b.배송주소||'') || a.거래처명.localeCompare(b.거래처명));
   if (!sub.length) return;
 
   // 거래처 그룹 (구역순 유지)
@@ -1579,7 +1579,7 @@ function renderResults(cfg){
     panel.className = 'tab-panel' + (idx===0?' active':'');
     panel.id = sid;
 
-    const sorted = [...sub].sort((a,b)=>a.구역.localeCompare(b.구역)||a.거래처명.localeCompare(b.거래처명));
+    const sorted = [...sub].sort((a,b)=>a.구역.localeCompare(b.구역)||(a.배송주소||'').localeCompare(b.배송주소||'')||a.거래처명.localeCompare(b.거래처명));
     panel.innerHTML = makePanelHTML(sorted, false, true, !addrHidden);
     tabMeta.set(sid, { rows: sorted, showDrv: false, showReassign: true });
     tp.appendChild(panel);
@@ -1646,7 +1646,7 @@ function dlExcel(){
     const sub = plan.filter(o=>o.담당기사===drv);
     if (!sub.length) return;
     rows.push([`▶ ${drv}`,'','','','','','','','','','']);
-    [...sub].sort((a,b)=>a.구역.localeCompare(b.구역)||a.거래처명.localeCompare(b.거래처명))
+    [...sub].sort((a,b)=>a.구역.localeCompare(b.구역)||(a.배송주소||'').localeCompare(b.배송주소||'')||a.거래처명.localeCompare(b.거래처명))
       .forEach(o=>rows.push([seq++,o.담당기사,o.구역,o.거래처명,o.배송주소,o.품목명,o.수량,o.구분,o.비고1,o.비고2,o.납기일]));
     rows.push([]);
   });

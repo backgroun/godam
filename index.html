@@ -423,7 +423,6 @@ button:not(:disabled):active{transform:scale(0.95)!important;transition:transfor
 <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
 <script>
 const $ = id => document.getElementById(id);
 
@@ -1291,18 +1290,22 @@ const savedDrvs = loadDriversFromStorage();
 (savedDrvs || DEFAULTS).forEach(d => addRow(d.name, d.zones));
 setupDnD();
 document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModal('drv-modal'); closeModal('master-modal'); } });
-window.addEventListener('load', () => {
-  // URL 해시에 공유 플랜 데이터가 있으면 우선 복원
+window.addEventListener('load', async () => {
+  // ?s= 공유 ID가 있으면 서버에서 플랜 데이터 fetch
   let sharedPlan = null;
-  const hashMatch = location.hash.match(/^#plan=(.+)$/);
-  if (hashMatch && typeof LZString !== 'undefined') {
+  const shareId = new URLSearchParams(location.search).get('s');
+  if (shareId) {
     try {
-      const parsed = JSON.parse(LZString.decompressFromEncodedURIComponent(hashMatch[1]));
-      if (parsed && parsed.plan && parsed.plan.length) {
-        sharedPlan = parsed;
-        history.replaceState(null, '', location.pathname);
+      showToast('공유 플랜 로드 중...', '#0369a1');
+      const r = await fetch(`/api/share?id=${encodeURIComponent(shareId)}`);
+      if (r.ok) {
+        const data = await r.json();
+        if (data && data.plan && data.plan.length) {
+          sharedPlan = data;
+          history.replaceState(null, '', location.pathname);
+        }
       }
-    } catch(e) { console.warn('공유 링크 파싱 실패:', e); }
+    } catch(e) { console.warn('공유 링크 로드 실패:', e); }
   }
 
   // 저장된 마스터 데이터 복원 (XLSX 불필요 — JSON 직접 파싱)
@@ -1787,24 +1790,30 @@ function dlExcel(){
 }
 
 // ── 모바일 공유 링크 ─────────────────────────────────────
-function shareLink() {
+async function shareLink() {
   if (!plan || !plan.length) { showToast('먼저 배송플랜을 생성하세요.', '#ef4444'); return; }
-  if (typeof LZString === 'undefined') { showToast('LZString 라이브러리 로드 실패', '#ef4444'); return; }
-  const data = JSON.stringify({plan, specialPlan, secondaryPlan, currentCfg, dlDate});
-  const compressed = LZString.compressToEncodedURIComponent(data);
-  const url = `${location.origin}${location.pathname}#plan=${compressed}`;
-  navigator.clipboard.writeText(url).then(() => {
+  showToast('공유 링크 생성 중...', '#0369a1');
+  try {
+    const body = JSON.stringify({plan, specialPlan, secondaryPlan, currentCfg, dlDate});
+    const resp = await fetch('/api/share', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body
+    });
+    if (!resp.ok) throw new Error('서버 오류 ' + resp.status);
+    const {id} = await resp.json();
+    if (!id) throw new Error('ID 없음');
+    const url = `${location.origin}${location.pathname}?s=${id}`;
+    try { await navigator.clipboard.writeText(url); }
+    catch {
+      const ta = document.createElement('textarea');
+      ta.value = url; ta.style.cssText = 'position:fixed;opacity:0';
+      document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
+    }
     showToast('📱 공유 링크 복사 완료! 모바일에서 링크를 열면 리스트가 자동으로 표시됩니다.');
-  }).catch(() => {
-    const ta = document.createElement('textarea');
-    ta.value = url;
-    ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
-    document.body.appendChild(ta);
-    ta.select();
-    document.execCommand('copy');
-    ta.remove();
-    showToast('📱 공유 링크 복사 완료! 모바일에서 링크를 열면 리스트가 자동으로 표시됩니다.');
-  });
+  } catch(e) {
+    showToast('공유 링크 생성 실패: ' + e.message, '#ef4444');
+  }
 }
 
 // ── 토스트 알림 ──────────────────────────────────────────

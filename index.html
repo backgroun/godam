@@ -695,9 +695,28 @@ function clearGeoCache() {
 }
 
 function _mapBoot() {
-  // Kakao SDK 로드 성공 시 maps.load() 초기화, 실패 시 바로 initMap
-  if (_kkReady && !_kkFailed) { kakao.maps.load(initMap); }
-  else { initMap(); }
+  if (_kkReady && !_kkFailed) {
+    let _initCalled = false;
+    const _kkTimeout = setTimeout(() => {
+      if (!_initCalled) {
+        console.error('[지도] kakao.maps.load 타임아웃 — 도메인 미등록 또는 JS 키 오류');
+        showToast('카카오맵 초기화 실패 (도메인 미등록?) → REST 폴백 사용', '#ef4444');
+        _kkFailed = true;
+        initMap();
+      }
+    }, 6000);
+    kakao.maps.load(() => {
+      _initCalled = true;
+      clearTimeout(_kkTimeout);
+      if (!window.kakao?.maps?.services) {
+        console.warn('[지도] kakao.maps.services 없음 — libraries=services 확인 필요');
+        _kkFailed = true;
+      }
+      initMap();
+    });
+  } else {
+    initMap();
+  }
 }
 function _mapCheck() {
   if (_lfReady && (_kkReady || _kkFailed)) _mapBoot();
@@ -733,8 +752,17 @@ function openMapView(drvFilter) {
     const ks = document.createElement('script');
     ks.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${KAKAO_MAP_KEY}&libraries=services&autoload=false`;
     ks.setAttribute('data-ks', '1');
-    ks.onload = () => { _kkReady = true; _mapCheck(); };
-    ks.onerror = () => { console.warn('[지도] 카카오 SDK 로드 실패 → REST 폴백'); _kkFailed = true; _mapCheck(); };
+    ks.onload = () => {
+      _kkReady = true;
+      console.log('[지도] 카카오 SDK 로드 성공');
+      _mapCheck();
+    };
+    ks.onerror = () => {
+      console.error('[지도] 카카오 SDK 로드 실패 — 도메인 미등록이거나 JS 키 오류. REST 폴백 사용');
+      showToast('카카오 SDK 오류: 도메인 등록 확인 필요 (REST 폴백 사용)', '#ef4444');
+      _kkFailed = true;
+      _mapCheck();
+    };
     document.head.appendChild(ks);
   }
 }

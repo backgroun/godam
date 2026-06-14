@@ -206,14 +206,21 @@ button:not(:disabled):active{transform:scale(0.95)!important;transition:transfor
   .up-arr{display:none}
   .action-btn{font-size:12px;padding:11px 6px}
   .gen-btn{font-size:14px;padding:12px}
-  /* 기사 카드 그리드: 2열 */
-  .sum-grid{grid-template-columns:repeat(2,1fr);gap:8px}
-  .sc{padding:12px 12px;border-radius:12px}
-  .sc .drv{font-size:12px}
-  .sc .big{font-size:22px;line-height:1.1}
+  /* 기사 카드: 1열 한 줄 */
+  .sum-grid{grid-template-columns:1fr;gap:4px}
+  .sc{flex-direction:row;align-items:center;padding:8px 12px;border-radius:10px;min-height:44px}
+  .sc .drv{font-size:14px;font-weight:700;flex:1;margin-bottom:0}
+  .sc .drv::after{content:'(' attr(data-cnt) ')';margin-left:4px;opacity:.85;font-weight:600}
+  .sc .big{display:none}
   .sc .zns{display:none}
-  .sc-btns{gap:6px;margin-top:10px}
-  .share-btn{font-size:13px;padding:10px 6px;min-height:44px}
+  .sc-btns{gap:4px;margin-top:0;padding-top:0;margin-left:8px}
+  .share-btn{padding:6px 10px;min-height:36px;flex:0;font-size:16px}
+  /* 검색: 한 줄, 주소숨기기 제거 */
+  #search-row{flex-wrap:nowrap;gap:6px}
+  #addr-toggle{display:none!important}
+  /* 공유/지도/인쇄 버튼 숨김 */
+  .actions .share-act-btn,.actions .map-btn,.actions .print-btn{display:none!important}
+  .actions{display:flex;grid-template-columns:unset;gap:8px;justify-content:flex-end}
   /* 탭 스크롤 */
   .tabs{flex-wrap:nowrap;overflow-x:auto;gap:3px;padding-bottom:2px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
   .tabs::-webkit-scrollbar{display:none}
@@ -241,9 +248,9 @@ button:not(:disabled):active{transform:scale(0.95)!important;transition:transfor
   .stat-hdr{font-size:13px;padding:10px 14px}
 }
 @media(max-width:480px){
-  .sum-grid{grid-template-columns:repeat(2,1fr)}
-  .sc .big{font-size:19px}
-  .sc .drv{font-size:11px}
+  .sum-grid{grid-template-columns:1fr}
+  .sc .big{display:none}
+  .sc .drv{font-size:13px}
   .hdr h1{font-size:18px}
   .ptbl th{font-size:11px;padding:8px 5px}
   .ptbl td{font-size:12px;padding:8px 5px}
@@ -258,8 +265,8 @@ button:not(:disabled):active{transform:scale(0.95)!important;transition:transfor
 
 <!-- MOBILE NAV (hidden on desktop) -->
 <div class="mob-nav" id="mob-nav">
-  <button class="mob-nav-btn active" id="mob-btn-upload" onclick="mobSwitch('upload')">📂 파일 관리</button>
-  <button class="mob-nav-btn" id="mob-btn-list" onclick="mobSwitch('list')">🚚 배송리스트</button>
+  <button class="mob-nav-btn" id="mob-btn-upload" onclick="mobSwitch('upload')">📂 파일 관리</button>
+  <button class="mob-nav-btn active" id="mob-btn-list" onclick="mobSwitch('list')">🚚 배송리스트</button>
 </div>
 
 <div class="hdr">
@@ -429,7 +436,7 @@ button:not(:disabled):active{transform:scale(0.95)!important;transition:transfor
     <button id="addr-toggle" class="addr-toggle-btn active" onclick="toggleAddressCol()">주소 보기</button>
   </div>
   <div class="actions">
-    <button class="abtn" onclick="shareLink()" style="background:#0369a1;color:#fff">📱 공유</button>
+    <button class="abtn share-act-btn" onclick="shareLink()" style="background:#0369a1;color:#fff">📱 공유</button>
     <button class="abtn map-btn" onclick="openMapView()">[지도]</button>
     <button class="abtn print-btn" onclick="dlPrintHTML()">[인쇄]</button>
     <button class="abtn dl-btn" onclick="dlExcel()">[엑셀]</button>
@@ -1864,12 +1871,12 @@ function renderResults(cfg){
     const sid = 'tab_' + drv.replace(/[^a-zA-Z0-9가-힣]/g,'_');
     const div = document.createElement('div');
     div.className = `sc ${clr}`;
-    div.innerHTML = `<div class="drv">${h(drv)}</div>
+    div.innerHTML = `<div class="drv" data-cnt="${customers}">${h(drv)}</div>
       <div class="big">${customers}</div>
       ${d ? `<div class="zns">${d.zones.join(' · ')}</div>` : ''}
       <div class="sc-btns">
-        <button class="share-btn" onclick="event.stopPropagation();openMapView('${h(drv)}')">🗺 지도</button>
-        <button class="share-btn" onclick="event.stopPropagation();openShareCard('${h(drv)}')">📷 캡쳐</button>
+        <button class="share-btn" onclick="event.stopPropagation();openMapView('${h(drv)}')">🗺<span class="mob-hide"> 지도</span></button>
+        <button class="share-btn" onclick="event.stopPropagation();openShareCard('${h(drv)}')">📷<span class="mob-hide"> 캡쳐</span></button>
       </div>`;
     sg.appendChild(div);
   });
@@ -2174,7 +2181,7 @@ function dlMasterExcel() {
 // ── 모바일 탭 전환 ───────────────────────────────────────
 function mobSwitch(tab) {
   const isMob = window.innerWidth <= 768;
-  const uploadEls = ['gen-section'];
+  const uploadEls = ['gen-section', 'upload-section'];
   const listEl = $('results');
   if (tab === 'upload') {
     uploadEls.forEach(id => { const el=$(id); if(el) el.style.display=''; });
@@ -2199,9 +2206,7 @@ function mobSwitch(tab) {
 
 // 모바일 초기화: 플랜 있으면 리스트 탭 기본 선택
 function initMobNav() {
-  if (plan && plan.length) {
-    mobSwitch('list');
-  }
+  if (window.innerWidth <= 768) mobSwitch('list');
 }
 </script>
 </body>

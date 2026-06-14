@@ -1750,7 +1750,7 @@ function dlExcel(){
   const fullList = [...plan, ...specialPlan, ...secondaryPlan].sort((a,b) =>
     (is2ch(a)?0:1)-(is2ch(b)?0:1) || (a._rowIdx||0)-(b._rowIdx||0));
 
-  const hdr = ['#','담당기사','거래처명','품목명','수량','구분','비고','배송주소'];
+  const hdr = ['#','거래처명','품목명','수량','구분','비고','배송주소'];
   const rows = [hdr];
   const rowColors = [];
   let seq = 0;
@@ -1762,7 +1762,6 @@ function dlExcel(){
     const note = [o.비고1, o.비고2].filter(Boolean).join(' / ');
     rows.push([
       isFirst ? seq : '',
-      isFirst ? o.담당기사 : '',
       isFirst ? o.거래처명 : '',
       o.품목명||'',
       o.수량||'',
@@ -1773,7 +1772,7 @@ function dlExcel(){
     rowColors.push({bg: o._bg||null, font: o._font||null});
   });
   const ws1 = XLSX.utils.aoa_to_sheet(rows);
-  ws1['!cols']=[{wch:5},{wch:10},{wch:24},{wch:30},{wch:7},{wch:8},{wch:16},{wch:40}];
+  ws1['!cols']=[{wch:5},{wch:26},{wch:32},{wch:7},{wch:8},{wch:16},{wch:40}];
   rowColors.forEach((clr, ri) => {
     if (!clr.bg && !clr.font) return;
     for (let c = 0; c < hdr.length; c++) {
@@ -1878,13 +1877,12 @@ function dlPrintHTML() {
       bodyRows += `<tr>
         ${idx===0
           ? `<td style="${s};text-align:center;color:#888;width:28px">${seq}</td>
-             <td style="${s};white-space:nowrap">${o.담당기사||''}</td>
-             <td style="${s};font-weight:700">${o.거래처명||''}</td>`
-          : `<td style="${s}"></td><td style="${s}"></td><td style="${s}"></td>`}
-        <td style="${s};white-space:nowrap">${item.품목명||''}</td>
+             <td style="${s};font-weight:700;word-break:keep-all;overflow-wrap:anywhere">${o.거래처명||''}</td>`
+          : `<td style="${s}"></td><td style="${s}"></td>`}
+        <td style="${s};word-break:break-all;overflow-wrap:anywhere">${item.품목명||''}</td>
         <td style="${s};text-align:center;white-space:nowrap;width:38px">${item.수량||''}</td>
         <td style="${s};text-align:center;white-space:nowrap;width:50px">${item.구분||''}</td>
-        <td style="${s};max-width:120px;overflow:hidden">${note}</td>
+        <td style="${s};word-break:keep-all;overflow-wrap:anywhere">${note}</td>
       </tr>`;
     });
   });
@@ -1905,11 +1903,11 @@ function dlPrintHTML() {
     </div>
     <table>
       <colgroup>
-        <col style="width:28px"><col style="width:72px"><col style="width:18%">
-        <col style="width:22%"><col style="width:38px"><col style="width:50px"><col>
+        <col style="width:28px"><col style="width:22%">
+        <col style="width:30%"><col style="width:38px"><col style="width:54px"><col>
       </colgroup>
       <thead><tr>
-        ${th('#','text-align:center')}${th('담당기사')}${th('거래처명')}
+        ${th('#','text-align:center')}${th('거래처명')}
         ${th('품목명')}${th('수량','text-align:center')}${th('구분','text-align:center')}${th('비고')}
       </tr></thead>
       <tbody>${bodyRows}</tbody>

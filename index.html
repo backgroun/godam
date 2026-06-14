@@ -1744,7 +1744,7 @@ function makePanelHTML(rows, showDrv, showReassign, showAddr = true, allowAddrAd
   });
   const groups = [...map.values()];
   const drvTh = showDrv ? `<th class="mob-hide">담당기사</th>` : '';
-  const raTh = showReassign ? `<th class="mob-hide">배정변경</th>` : '';
+  const raTh = showReassign ? `<th class="mob-hide" style="width:90px;min-width:90px">배정변경</th>` : '';
   const addrTh = showAddr ? `<th class="mob-hide">배송주소</th>` : '';
   const noteHide = isAll ? '' : ' mob-hide';
   const hdr = `<th style="min-width:32px;text-align:center">#</th><th class="mob-hide">구역</th>${drvTh}<th>거래처명</th><th>품목명</th><th style="min-width:48px;text-align:center">수량</th><th style="min-width:60px;text-align:center">구분</th><th class="note${noteHide}" style="min-width:200px">비고</th>${raTh}${addrTh}`;
@@ -1753,7 +1753,7 @@ function makePanelHTML(rows, showDrv, showReassign, showAddr = true, allowAddrAd
     seq++;
     const n = items.length;
     const stripe = seq % 2 === 1 ? '#ffffff' : '#f9fafb';
-    const shortN = n => n.replace(/ 기사$/, '');
+    const shortN = n => n.split(' ')[0];
     const drvOpts = showReassign ? [...currentCfg.map(d=>d.name),'택배','미배정']
       .map(d=>`<option value="${h(d)}"${o.담당기사===d?' selected':''}>${h(shortN(d))}</option>`).join('') : '';
     return items.map((item, idx) => {
@@ -2184,16 +2184,19 @@ function mobSwitch(tab) {
   const uploadEls = ['gen-section', 'upload-section'];
   const listEl = $('results');
   if (tab === 'upload') {
-    uploadEls.forEach(id => { const el=$(id); if(el) el.style.display=''; });
-    if (listEl) listEl.style.display = 'none';
-    $('mob-btn-upload').classList.add('active');
-    $('mob-btn-list').classList.remove('active');
+    if (isMob) {
+      uploadEls.forEach(id => { const el=$(id); if(el) el.style.display=''; });
+      if (listEl) listEl.style.display = 'none';
+    }
+    $('mob-btn-upload')?.classList.add('active');
+    $('mob-btn-list')?.classList.remove('active');
   } else {
-    uploadEls.forEach(id => { const el=$(id); if(el) el.style.display='none'; });
-    if (listEl) listEl.style.display = 'block';
-    $('mob-btn-upload').classList.remove('active');
-    $('mob-btn-list').classList.add('active');
-    // 모바일에서 리스트 탭 패널 위치로 스크롤
+    if (isMob) {
+      uploadEls.forEach(id => { const el=$(id); if(el) el.style.display='none'; });
+      if (listEl) listEl.style.display = 'block';
+    }
+    $('mob-btn-upload')?.classList.remove('active');
+    $('mob-btn-list')?.classList.add('active');
     if (isMob) {
       requestAnimationFrame(() => {
         const activePanel = document.querySelector('.tab-panel.active');

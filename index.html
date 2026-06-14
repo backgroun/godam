@@ -145,6 +145,13 @@ button:not(:disabled):active{transform:scale(0.95)!important;transition:transfor
   .mob-nav-btn{flex:1;padding:13px 6px;font-size:14px;font-weight:700;cursor:pointer;background:none;border:none;color:#555;border-bottom:3px solid transparent;transition:.15s}
   .mob-nav-btn.active{color:#fff;border-bottom-color:#fff}
   .mob-upload-section{transition:.15s}
+  /* 모바일 리스트: 읽기 전용 (담당기사·배정변경·주소 숨김, 수평 스크롤) */
+  .mob-hide{display:none!important}
+  .ptbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -4px}
+  .ptbl{font-size:13px;min-width:360px}
+  .ptbl th,.ptbl td{padding:7px 6px}
+  .drv-sel{display:none}
+  .no-addr{display:none}
 }
 /* MASTER LIST */
 #master-scroll{max-height:calc(75vh - 180px);overflow-y:auto;overflow-x:auto;border-radius:8px;border:1px solid #2e2e2e}
@@ -1424,10 +1431,10 @@ function makePanelHTML(rows, showDrv, showReassign, showAddr = true, allowAddrAd
     });
   });
   const groups = [...map.values()];
-  const drvTh = showDrv ? `<th>담당기사</th>` : '';
-  const raTh = showReassign ? `<th>배정변경</th>` : '';
-  const addrTh = showAddr ? `<th>배송주소</th>` : '';
-  const hdr = `<th style="min-width:36px;text-align:center">#</th><th>구역</th>${drvTh}<th>거래처명</th>${raTh}<th>품목명</th><th style="min-width:55px">수량</th><th style="min-width:80px">구분</th><th>비고</th>${addrTh}`;
+  const drvTh = showDrv ? `<th class="mob-hide">담당기사</th>` : '';
+  const raTh = showReassign ? `<th class="mob-hide">배정변경</th>` : '';
+  const addrTh = showAddr ? `<th class="mob-hide">배송주소</th>` : '';
+  const hdr = `<th style="min-width:36px;text-align:center">#</th><th>구역</th>${drvTh}<th>거래처명</th><th>품목명</th><th style="min-width:55px">수량</th><th style="min-width:80px">구분</th><th>비고</th>${raTh}${addrTh}`;
   let seq = 0;
   const body = groups.map(({ meta: o, items }) => {
     seq++;
@@ -1449,48 +1456,48 @@ function makePanelHTML(rows, showDrv, showReassign, showAddr = true, allowAddrAd
       if (idx === 0) {
         // 첫 번째 행: 모든 정보 표시. rowspan 없음 — 각 행이 독립적으로 전체 배경색 적용
         const drvShort = o.담당기사 ? o.담당기사.split(' ')[0] : '';
-        const drvCell = showDrv ? `<td style="${s};text-align:center${manualItalic}">${h(drvShort)}</td>` : '';
+        const drvCell = showDrv ? `<td class="mob-hide" style="${s};text-align:center${manualItalic}">${h(drvShort)}</td>` : '';
         const raCell = showReassign
-          ? `<td style="${s};vertical-align:top;padding-top:10px"><select class="drv-sel" data-name="${h(o.거래처명)}" onchange="reassign(this.dataset.name,this.value)">${drvOpts}</select></td>`
+          ? `<td class="mob-hide" style="${s};vertical-align:top;padding-top:10px"><select class="drv-sel" data-name="${h(o.거래처명)}" onchange="reassign(this.dataset.name,this.value)">${drvOpts}</select></td>`
           : '';
         const addrCell = showAddr ? (o.배송주소
-          ? `<td class="addr-edit" style="${s}" data-name="${h(o.거래처명)}" data-addr="${h(o.배송주소)}" onclick="startEditAddr(this)">${h(o.배송주소)}</td>`
+          ? `<td class="mob-hide addr-edit" style="${s}" data-name="${h(o.거래처명)}" data-addr="${h(o.배송주소)}" onclick="startEditAddr(this)">${h(o.배송주소)}</td>`
           : allowAddrAdd
-            ? `<td style="${s}" data-name="${h(o.거래처명)}" onclick="openAddrSearch(this)"><span class="no-addr">+ 주소 검색</span></td>`
-            : `<td style="${s}"></td>`
+            ? `<td class="mob-hide" style="${s}" data-name="${h(o.거래처명)}" onclick="openAddrSearch(this)"><span class="no-addr">+ 주소 검색</span></td>`
+            : `<td class="mob-hide" style="${s}"></td>`
         ) : '';
         return `<tr${cls}>
           <td style="${s};text-align:center;color:#888;white-space:nowrap;min-width:36px">${seq}</td>
           <td style="${s}"><span class="zchip" style="${ZONE_STYLE[o.구역]||ZONE_STYLE['기타']}">${h(o.구역)}</span></td>
           ${drvCell}
           <td class="cust" style="${s}${manualItalic}">${custDisplay(o.거래처명)}</td>
-          ${raCell}
           <td style="${s}">${h(item.품목명)}</td>
           <td style="${s};text-align:center">${h(item.수량)}</td>
           <td style="${s};text-align:center">${h(item.구분)}</td>
           <td class="note" style="${s}">${note}</td>
+          ${raCell}
           ${addrCell}
         </tr>`;
       }
-      // 2번째 행부터: 구역/기사/거래처명/배정변경/주소 칸은 비우되 동일 배경색 적용 → 전체 행이 같은 색
-      const drvCell = showDrv ? `<td style="${s}"></td>` : '';
-      const raCell = showReassign ? `<td style="${s}"></td>` : '';
-      const addrCell = showAddr ? `<td style="${s}"></td>` : '';
+      // 2번째 행부터: 구역/기사/거래처명/배정변경/주소 칸은 비우되 동일 배경색 적용
+      const drvCell = showDrv ? `<td class="mob-hide" style="${s}"></td>` : '';
+      const raCell = showReassign ? `<td class="mob-hide" style="${s}"></td>` : '';
+      const addrCell = showAddr ? `<td class="mob-hide" style="${s}"></td>` : '';
       return `<tr${cls}>
           <td style="${s}"></td>
           <td style="${s}"></td>
           ${drvCell}
           <td style="${s}"></td>
-          ${raCell}
           <td style="${s}">${h(item.품목명)}</td>
           <td style="${s};text-align:center">${h(item.수량)}</td>
           <td style="${s};text-align:center">${h(item.구분)}</td>
           <td class="note" style="${s}">${note}</td>
+          ${raCell}
           ${addrCell}
         </tr>`;
     }).join('');
   }).join('');
-  return `<table class="ptbl"><thead><tr>${hdr}</tr></thead><tbody>${body}</tbody></table>`;
+  return `<div class="ptbl-wrap"><table class="ptbl"><thead><tr>${hdr}</tr></thead><tbody>${body}</tbody></table></div>`;
 }
 
 function generate(){
@@ -1560,8 +1567,11 @@ function renderResults(cfg){
   });
 
 
-  // 전체 리스트 탭 (2차 제외)
-  const fullList = [...plan, ...specialPlan, ...secondaryPlan].sort((a,b)=>(a._rowIdx||0)-(b._rowIdx||0));
+  // 전체 리스트 탭 — 2차 포함, 2차 항목 최상단
+  const is2ch = o => (String(o.거래처명||'')+String(o.품목명||'')).includes('2차');
+  const fullList = [...plan, ...specialPlan, ...secondaryPlan].sort((a,b) =>
+    (is2ch(a)?0:1)-(is2ch(b)?0:1) || (a._rowIdx||0)-(b._rowIdx||0)
+  );
   if (fullList.length) {
     const btnAll = document.createElement('button');
     btnAll.className = 'tab-btn';

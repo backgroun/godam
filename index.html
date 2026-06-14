@@ -199,8 +199,8 @@ button:not(:disabled):active{transform:scale(0.95)!important;transition:transfor
   .tab-panel{padding:10px 6px}
   /* 테이블: 구역·비고 숨긴 후 남은 컬럼에 최적화 */
   .ptbl{font-size:13px;min-width:0;table-layout:fixed;width:100%}
-  .ptbl th{padding:10px 7px;font-size:12px}
-  .ptbl td{padding:9px 7px;font-size:13px}
+  .ptbl th{padding:10px 7px;font-size:12px;word-break:keep-all}
+  .ptbl td{padding:9px 7px;font-size:13px;overflow-wrap:anywhere;word-break:break-all}
   .cust{font-size:13px}
   .note{font-size:12px}
   .zchip{font-size:11px;padding:2px 6px}
@@ -403,6 +403,7 @@ button:not(:disabled):active{transform:scale(0.95)!important;transition:transfor
     <button id="addr-toggle" class="addr-toggle-btn active" onclick="toggleAddressCol()">주소 보기</button>
   </div>
   <div class="actions">
+    <button class="abtn mob-full" onclick="mobSwitch('upload')" style="background:#374151;color:#fff">📂 파일관리</button>
     <button class="abtn" onclick="shareLink()" style="background:#0369a1;color:#fff">📱 공유</button>
     <button class="abtn map-btn" onclick="openMapView()">[지도]</button>
     <button class="abtn print-btn" onclick="dlPrintHTML()">[인쇄]</button>
@@ -1510,7 +1511,8 @@ function makePanelHTML(rows, showDrv, showReassign, showAddr = true, allowAddrAd
   const drvTh = showDrv ? `<th class="mob-hide">담당기사</th>` : '';
   const raTh = showReassign ? `<th class="mob-hide">배정변경</th>` : '';
   const addrTh = showAddr ? `<th class="mob-hide">배송주소</th>` : '';
-  const hdr = `<th style="min-width:32px;text-align:center">#</th><th class="mob-hide">구역</th>${drvTh}<th>거래처명</th><th>품목명</th><th style="min-width:48px;text-align:center">수량</th><th style="min-width:60px;text-align:center">구분</th><th class="mob-hide">비고</th>${raTh}${addrTh}`;
+  const noteHide = isAll ? '' : ' mob-hide';
+  const hdr = `<th style="min-width:32px;text-align:center">#</th><th class="mob-hide">구역</th>${drvTh}<th>거래처명</th><th>품목명</th><th style="min-width:48px;text-align:center">수량</th><th style="min-width:60px;text-align:center">구분</th><th class="note${noteHide}">비고</th>${raTh}${addrTh}`;
   let seq = 0;
   const body = groups.map(({ meta: o, items }) => {
     seq++;
@@ -1529,6 +1531,7 @@ function makePanelHTML(rows, showDrv, showReassign, showAddr = true, allowAddrAd
       const s = `background:${iBg}${iText ? `;color:${iText}` : ''}`;
       const note = [item.비고1, item.비고2].filter(Boolean).map(h).join(' / ');
       const manualItalic = o._manual ? ';font-style:italic' : '';
+      const manualColor = o._manual ? ';color:#d97706' : '';
       if (idx === 0) {
         // 첫 번째 행: 모든 정보 표시. rowspan 없음 — 각 행이 독립적으로 전체 배경색 적용
         const drvShort = o.담당기사 ? o.담당기사.split(' ')[0] : '';
@@ -1546,11 +1549,11 @@ function makePanelHTML(rows, showDrv, showReassign, showAddr = true, allowAddrAd
           <td style="${s};text-align:center;color:#888;white-space:nowrap;min-width:32px">${seq}</td>
           <td class="mob-hide" style="${s}"><span class="zchip" style="${ZONE_STYLE[o.구역]||ZONE_STYLE['기타']}">${h(o.구역)}</span></td>
           ${drvCell}
-          <td class="cust" style="${s}${manualItalic}">${custDisplay(o.거래처명)}</td>
-          <td style="${s};white-space:nowrap">${h(item.품목명)}</td>
+          <td class="cust" style="${s}${manualItalic}${manualColor}">${custDisplay(o.거래처명)}</td>
+          <td style="${s}">${h(item.품목명)}</td>
           <td style="${s};text-align:center;white-space:nowrap">${h(item.수량)}</td>
           <td style="${s};text-align:center;white-space:nowrap">${h(item.구분)}</td>
-          <td class="note mob-hide" style="${s}">${note}</td>
+          <td class="note${noteHide}" style="${s}">${note}</td>
           ${raCell}
           ${addrCell}
         </tr>`;
@@ -1564,10 +1567,10 @@ function makePanelHTML(rows, showDrv, showReassign, showAddr = true, allowAddrAd
           <td class="mob-hide" style="${s}"></td>
           ${drvCell}
           <td style="${s}"></td>
-          <td style="${s};white-space:nowrap">${h(item.품목명)}</td>
+          <td style="${s}">${h(item.품목명)}</td>
           <td style="${s};text-align:center;white-space:nowrap">${h(item.수량)}</td>
           <td style="${s};text-align:center;white-space:nowrap">${h(item.구분)}</td>
-          <td class="note mob-hide" style="${s}">${note}</td>
+          <td class="note${noteHide}" style="${s}">${note}</td>
           ${raCell}
           ${addrCell}
         </tr>`;

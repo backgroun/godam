@@ -1452,24 +1452,58 @@ function parseOrders(wb){
     // 셀 색상 읽기 (배경색, 글자색)
     const cellRef = XLSX.utils.encode_cell({r: i, c: nameCol >= 0 ? nameCol : 0});
     const cell = ws[cellRef];
-    if (cell && cell.s) {
-      const fg = cell.s.fgColor;
+    // 스타일 해석: 셀 → wb.Styles 수치 인덱스 → 행 레벨 순으로 폴백
+    let sty = null;
+    if (cell && cell.s != null) {
+      if (typeof cell.s === 'object') {
+        sty = cell.s;
+      } else if (typeof cell.s === 'number') {
+        try {
+          const xfs = (wb.Styles||{}).CellXf || (wb.Styles||{}).xf || [];
+          const xf  = xfs[cell.s];
+          if (xf) {
+            const fills = (wb.Styles||{}).Fills || (wb.Styles||{}).fills || [];
+            const fonts = (wb.Styles||{}).Fonts || (wb.Styles||{}).fonts || [];
+            sty = { fgColor: (fills[xf.fillId]||{}).fgColor, font: fonts[xf.fontId]||null };
+          }
+        } catch(e){}
+      }
+    }
+    // 행 레벨 스타일 폴백 (행 전체에 색상을 적용한 경우)
+    if (!sty) {
+      const rowMeta = (ws['!rows']||[])[i];
+      if (rowMeta && rowMeta.s && typeof rowMeta.s === 'object') sty = rowMeta.s;
+    }
+    // 디버그: 브라우저 콘솔에서 확인 가능
+    if (i <= hi + 6) console.log('[xlsx]', cellRef, JSON.stringify(cell?.s)?.slice(0,120), '|row', JSON.stringify((ws['!rows']||[])[i]?.s)?.slice(0,80));
+    if (sty) {
+      const OFFICE_THEME = ['FFFFFF','000000','E7E6E6','44546A','4472C4','ED7D31','A5A5A5','FFC000','5B9BD5','FF0000'];
+      const fg = sty.fgColor;
       if (fg) {
         let bgRgb = null;
         const fgVal = fg.rgb || fg.argb;
         if (fgVal) bgRgb = (fgVal.length > 6 ? fgVal.slice(-6) : fgVal).toUpperCase();
         else if (fg.indexed != null && fg.indexed < EXCEL_INDEXED.length) bgRgb = EXCEL_INDEXED[fg.indexed].slice(1);
+        else if (fg.theme != null && fg.theme < OFFICE_THEME.length && !fg.tint) bgRgb = OFFICE_THEME[fg.theme];
         if (bgRgb && !/^F{6}$/.test(bgRgb) && !/^0{6}$/.test(bgRgb)) obj._bg = '#' + bgRgb;
       }
-      const fc = cell.s.font && cell.s.font.color;
+      const fc = sty.font && sty.font.color;
       if (fc) {
         let fRgb = null;
         const fcVal = fc.rgb || fc.argb;
         if (fcVal) fRgb = (fcVal.length > 6 ? fcVal.slice(-6) : fcVal).toUpperCase();
         else if (fc.indexed != null && fc.indexed < EXCEL_INDEXED.length && fc.indexed > 1) fRgb = EXCEL_INDEXED[fc.indexed].slice(1);
-        else if (fc.theme != null) {
-          const OFFICE_THEME = ['FFFFFF','000000','E7E6E6','44546A','4472C4','ED7D31','A5A5A5','FFC000','5B9BD5','FF0000'];
-          if (fc.theme < OFFICE_THEME.length && !fc.tint) fRgb = OFFICE_THEME[fc.theme];
+        else if (fc.theme != null && fc.theme < OFFICE_THEME.length) {
+          const base = OFFICE_THEME[fc.theme];
+          if (fc.tint && fc.tint !== 0) {
+            // tint 적용: 음수=어둡게, 양수=밝게
+            const t = fc.tint;
+            const r2 = parseInt(base.slice(0,2),16), g2 = parseInt(base.slice(2,4),16), b2 = parseInt(base.slice(4,6),16);
+            const apply = (c,t) => t < 0 ? Math.round(c*(1+t)) : Math.round(c+(255-c)*t);
+            fRgb = [apply(r2,t),apply(g2,t),apply(b2,t)].map(x=>x.toString(16).padStart(2,'0').toUpperCase()).join('');
+          } else {
+            fRgb = base;
+          }
         }
         if (fRgb && !/^0{6}$/.test(fRgb) && !/^F{6}$/.test(fRgb)) obj._font = '#' + fRgb;
       }

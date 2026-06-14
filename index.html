@@ -1595,7 +1595,7 @@ function makePanelHTML(rows, showDrv, showReassign, showAddr = true, allowAddrAd
   const raTh = showReassign ? `<th class="mob-hide">배정변경</th>` : '';
   const addrTh = showAddr ? `<th class="mob-hide">배송주소</th>` : '';
   const noteHide = isAll ? '' : ' mob-hide';
-  const hdr = `<th style="min-width:32px;text-align:center">#</th><th class="mob-hide">구역</th>${drvTh}<th>거래처명</th><th>품목명</th><th style="min-width:48px;text-align:center">수량</th><th style="min-width:60px;text-align:center">구분</th><th class="note${noteHide}">비고</th>${raTh}${addrTh}`;
+  const hdr = `<th style="min-width:32px;text-align:center">#</th><th class="mob-hide">구역</th>${drvTh}<th>거래처명</th><th>품목명</th><th style="min-width:48px;text-align:center">수량</th><th style="min-width:60px;text-align:center">구분</th><th class="note${noteHide}" style="width:65px">비고</th>${raTh}${addrTh}`;
   let seq = 0;
   const body = groups.map(({ meta: o, items }) => {
     seq++;
@@ -1633,7 +1633,7 @@ function makePanelHTML(rows, showDrv, showReassign, showAddr = true, allowAddrAd
           <td class="mob-hide" style="${s}"><span class="zchip" style="${ZONE_STYLE[o.구역]||ZONE_STYLE['기타']}">${h(o.구역)}</span></td>
           ${drvCell}
           <td class="cust" style="${s}${manualItalic}${manualColor}">${custDisplay(o.거래처명)}</td>
-          <td style="${s}">${h(item.품목명)}</td>
+          <td style="${s};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${h(item.품목명)}</td>
           <td style="${s};text-align:center;white-space:nowrap">${h(item.수량)}</td>
           <td style="${s};text-align:center;white-space:nowrap">${h(item.구분)}</td>
           <td class="note${noteHide}" style="${s}">${note}</td>
@@ -1650,7 +1650,7 @@ function makePanelHTML(rows, showDrv, showReassign, showAddr = true, allowAddrAd
           <td class="mob-hide" style="${s}"></td>
           ${drvCell}
           <td style="${s}"></td>
-          <td style="${s}">${h(item.품목명)}</td>
+          <td style="${s};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${h(item.품목명)}</td>
           <td style="${s};text-align:center;white-space:nowrap">${h(item.수량)}</td>
           <td style="${s};text-align:center;white-space:nowrap">${h(item.구분)}</td>
           <td class="note${noteHide}" style="${s}">${note}</td>

@@ -395,7 +395,6 @@ button:not(:disabled):active{transform:scale(0.95)!important;transition:transfor
     <button id="addr-toggle" class="addr-toggle-btn active" onclick="toggleAddressCol()">주소 보기</button>
   </div>
   <div class="actions">
-    <button class="abtn" onclick="mobSwitch('upload')" style="background:#374151;color:#fff">📂 파일관리</button>
     <button class="abtn" onclick="shareLink()" style="background:#0369a1;color:#fff">📱 공유</button>
     <button class="abtn map-btn" onclick="openMapView()">[지도]</button>
     <button class="abtn print-btn" onclick="dlPrintHTML()">[인쇄]</button>
@@ -1748,7 +1747,7 @@ function dlExcel(){
   const fullList = [...plan, ...specialPlan, ...secondaryPlan].sort((a,b) =>
     (is2ch(a)?0:1)-(is2ch(b)?0:1) || (a._rowIdx||0)-(b._rowIdx||0));
 
-  const hdr = ['#','구역','담당기사','거래처명','품목명','수량','구분','비고','배송주소'];
+  const hdr = ['#','담당기사','거래처명','품목명','수량','구분','비고','배송주소'];
   const rows = [hdr];
   const rowColors = [];
   let seq = 0;
@@ -1760,7 +1759,6 @@ function dlExcel(){
     const note = [o.비고1, o.비고2].filter(Boolean).join(' / ');
     rows.push([
       isFirst ? seq : '',
-      isFirst ? o.구역 : '',
       isFirst ? o.담당기사 : '',
       isFirst ? o.거래처명 : '',
       o.품목명||'',
@@ -1772,7 +1770,7 @@ function dlExcel(){
     rowColors.push({bg: o._bg||null, font: o._font||null});
   });
   const ws1 = XLSX.utils.aoa_to_sheet(rows);
-  ws1['!cols']=[{wch:5},{wch:12},{wch:10},{wch:24},{wch:30},{wch:7},{wch:8},{wch:20},{wch:40}];
+  ws1['!cols']=[{wch:5},{wch:10},{wch:24},{wch:30},{wch:7},{wch:8},{wch:16},{wch:40}];
   rowColors.forEach((clr, ri) => {
     if (!clr.bg && !clr.font) return;
     for (let c = 0; c < hdr.length; c++) {
@@ -1785,40 +1783,6 @@ function dlExcel(){
     }
   });
   XLSX.utils.book_append_sheet(wb, ws1, '전체리스트');
-
-  // ── 기사별 시트 ───────────────────────────────────
-  const cfg = getDriverCfg();
-  const allDrvs = [...cfg.map(d=>d.name),'미배정'];
-  allDrvs.forEach(drv => {
-    const sub = plan.filter(o=>o.담당기사===drv);
-    if (!sub.length) return;
-    const dRows = [['#','구역','거래처명','품목명','수량','구분','비고','배송주소']];
-    let dSeq=0; const dSeen=new Set();
-    [...sub].sort((a,b)=>a.구역.localeCompare(b.구역)||(a.배송주소||'').localeCompare(b.배송주소||'')||a.거래처명.localeCompare(b.거래처명))
-      .forEach(o=>{
-        const isFirst=!dSeen.has(o.거래처명);
-        if(isFirst){dSeq++;dSeen.add(o.거래처명);}
-        const note=[o.비고1,o.비고2].filter(Boolean).join(' / ');
-        dRows.push([isFirst?dSeq:'',isFirst?o.구역:'',isFirst?o.거래처명:'',o.품목명||'',o.수량||'',o.구분||'',note,isFirst?(o.배송주소||''):'']);
-      });
-    const wsDrv = XLSX.utils.aoa_to_sheet(dRows);
-    wsDrv['!cols']=[{wch:5},{wch:12},{wch:24},{wch:30},{wch:7},{wch:8},{wch:20},{wch:40}];
-    XLSX.utils.book_append_sheet(wb, wsDrv, drv.slice(0,31));
-  });
-
-  // ── 구역별 요약 ───────────────────────────────────
-  const smap={};
-  plan.forEach(o=>{
-    const k=o.구역+'|'+o.담당기사;
-    if(!smap[k]) smap[k]={구역:o.구역,담당기사:o.담당기사,거래처:new Set(),총수량:0};
-    smap[k].거래처.add(o.거래처명);
-    smap[k].총수량 += parseFloat(o.수량)||0;
-  });
-  const sumRows = Object.values(smap).map(s=>({구역:s.구역,담당기사:s.담당기사,거래처수:s.거래처.size,총수량:s.총수량}))
-    .sort((a,b)=>a.구역.localeCompare(b.구역));
-  const ws3 = XLSX.utils.json_to_sheet(sumRows);
-  XLSX.utils.book_append_sheet(wb, ws3, '구역별요약');
-
   XLSX.writeFile(wb, `배송플랜_${dlDate}.xlsx`, {cellStyles: true});
 }
 
@@ -1881,96 +1845,66 @@ window.addEventListener('scroll', () => {
 function dlPrintHTML() {
   if (!plan) return;
   const is2ch = o => (String(o.거래처명||'')+String(o.품목명||'')).includes('2차');
-  const ZCOLORS = {
-    '마포':'#7c3aed','은평':'#0369a1','서대문':'#0891b2','강서':'#15803d',
-    '동작':'#b45309','영등포':'#d97706','구로':'#c2410c','양천':'#0f766e',
-    '강남':'#be185d','서초':'#7c3aed','동대문':'#1d4ed8','성동':'#0891b2',
-    '용산':'#9d174d','중구':'#374151','종로':'#166534','성북':'#6d28d9',
-    '노원':'#b91c1c','강북':'#047857','도봉':'#1e40af','주소없음':'#7f1d1d',
-    '기타':'#374151','택배':'#0369a1'
-  };
-  const zChip = z => {
-    const c = ZCOLORS[z]||'#374151';
-    return `<span style="display:inline-block;padding:3px 8px;border-radius:12px;font-size:12px;font-weight:700;background:${c};color:#fff;white-space:nowrap">${z}</span>`;
-  };
+  const fullList = [...plan, ...specialPlan, ...secondaryPlan].sort((a,b) =>
+    (is2ch(a)?0:1)-(is2ch(b)?0:1) || (a._rowIdx||0)-(b._rowIdx||0));
+
+  const th = (txt, extra='') =>
+    `<th style="padding:8px 9px;border:1px solid #bbb;background:#f3f4f6;white-space:nowrap;-webkit-print-color-adjust:exact;print-color-adjust:exact;${extra}">${txt}</th>`;
   const tdBase = 'padding:7px 9px;border:1px solid #ddd;vertical-align:top';
 
-  const cfg = getDriverCfg();
-  const allDrvs = [...new Set([...cfg.map(d=>d.name), '택배', '미배정'])];
-
-  let sections = '';
-  let firstSection = true;
-  allDrvs.forEach(drv => {
-    const drvItems = plan.filter(o => o.담당기사 === drv);
-    if (!drvItems.length) return;
-    const sorted = [...drvItems].sort((a,b) =>
-      (is2ch(a)?0:1)-(is2ch(b)?0:1) || (a._rowIdx||0)-(b._rowIdx||0));
-    const map = new Map();
-    sorted.forEach(o => {
-      if (!map.has(o.거래처명)) map.set(o.거래처명, {meta:o, items:[]});
-      map.get(o.거래처명).items.push(o);
-    });
-    let seq = 0, rows = '';
-    map.forEach(({meta:o, items}) => {
-      seq++;
-      items.forEach((item, idx) => {
-        const bg = item._bg || (seq % 2 === 0 ? '#f0f4f8' : '#ffffff');
-        const fc = item._font || '#111111';
-        const note = [item.비고1, item.비고2].filter(Boolean).join(' / ');
-        const s = `${tdBase};background:${bg};color:${fc}`;
-        rows += `<tr>
-          ${idx===0
-            ? `<td style="${s};text-align:center;color:#888;width:30px">${seq}</td>
-               <td style="${s};width:64px">${zChip(o.구역)}</td>
-               <td style="${s};font-weight:700">${o.거래처명||''}</td>`
-            : `<td style="${s}"></td><td style="${s}"></td><td style="${s}"></td>`}
-          <td style="${s}">${item.품목명||''}</td>
-          <td style="${s};text-align:center;width:42px">${item.수량||''}</td>
-          <td style="${s};text-align:center;width:54px">${item.구분||''}</td>
-          <td style="${s}">${note}</td>
-        </tr>`;
-      });
-    });
-    const pb = firstSection ? '' : 'page-break-before:always;';
-    firstSection = false;
-    sections += `<div style="${pb}padding-top:0">
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;padding:9px 12px;background:#1e293b;color:#fff;border-radius:7px;-webkit-print-color-adjust:exact;print-color-adjust:exact">
-        <span style="font-size:17px;font-weight:800">🚚 ${drv}</span>
-        <span style="font-size:13px;opacity:.75">${map.size}거래처 · ${drvItems.length}건</span>
-      </div>
-      <table style="width:100%;border-collapse:collapse;margin-bottom:6px">
-        <thead><tr>
-          <th style="padding:8px 9px;border:1px solid #bbb;background:#f3f4f6;text-align:center;width:30px;-webkit-print-color-adjust:exact;print-color-adjust:exact">#</th>
-          <th style="padding:8px 9px;border:1px solid #bbb;background:#f3f4f6;width:64px;-webkit-print-color-adjust:exact;print-color-adjust:exact">구역</th>
-          <th style="padding:8px 9px;border:1px solid #bbb;background:#f3f4f6;-webkit-print-color-adjust:exact;print-color-adjust:exact">거래처명</th>
-          <th style="padding:8px 9px;border:1px solid #bbb;background:#f3f4f6;-webkit-print-color-adjust:exact;print-color-adjust:exact">품목명</th>
-          <th style="padding:8px 9px;border:1px solid #bbb;background:#f3f4f6;text-align:center;width:42px;-webkit-print-color-adjust:exact;print-color-adjust:exact">수량</th>
-          <th style="padding:8px 9px;border:1px solid #bbb;background:#f3f4f6;text-align:center;width:54px;-webkit-print-color-adjust:exact;print-color-adjust:exact">구분</th>
-          <th style="padding:8px 9px;border:1px solid #bbb;background:#f3f4f6;-webkit-print-color-adjust:exact;print-color-adjust:exact">비고</th>
-        </tr></thead>
-        <tbody>${rows}</tbody>
-      </table>
-    </div>`;
+  const map = new Map();
+  fullList.forEach(o => {
+    if (!map.has(o.거래처명)) map.set(o.거래처명, {meta:o, items:[]});
+    map.get(o.거래처명).items.push(o);
   });
 
-  const totalCust = new Set(plan.map(o=>o.거래처명)).size;
+  let seq = 0, bodyRows = '';
+  map.forEach(({meta:o, items}) => {
+    seq++;
+    items.forEach((item, idx) => {
+      const bg = item._bg || (seq % 2 === 0 ? '#f0f4f8' : '#ffffff');
+      const fc = item._font || '#111111';
+      const note = [item.비고1, item.비고2].filter(Boolean).join(' / ');
+      const s = `${tdBase};background:${bg};color:${fc};-webkit-print-color-adjust:exact;print-color-adjust:exact`;
+      bodyRows += `<tr>
+        ${idx===0
+          ? `<td style="${s};text-align:center;color:#888;width:28px">${seq}</td>
+             <td style="${s};white-space:nowrap">${o.담당기사||''}</td>
+             <td style="${s};font-weight:700">${o.거래처명||''}</td>`
+          : `<td style="${s}"></td><td style="${s}"></td><td style="${s}"></td>`}
+        <td style="${s};white-space:nowrap">${item.품목명||''}</td>
+        <td style="${s};text-align:center;white-space:nowrap;width:38px">${item.수량||''}</td>
+        <td style="${s};text-align:center;white-space:nowrap;width:50px">${item.구분||''}</td>
+        <td style="${s};max-width:120px;overflow:hidden">${note}</td>
+      </tr>`;
+    });
+  });
+
+  const totalCust = map.size;
   const html = `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8">
     <title>배송플랜 ${dlDate}</title>
     <style>
       *{box-sizing:border-box}
       body{font-family:'맑은 고딕','Apple SD Gothic Neo',sans-serif;color:#000;font-size:14px;margin:0;padding:14px}
-      @media print{
-        @page{size:A4;margin:12mm}
-        body{padding:0}
-        .no-print{display:none!important}
-      }
+      table{width:100%;border-collapse:collapse;table-layout:fixed}
+      @media print{@page{size:A4;margin:12mm}body{padding:0}.no-print{display:none!important}}
     </style></head><body>
-    <div class="no-print" style="margin-bottom:14px;padding:10px 14px;background:#f3f4f6;border-radius:7px;display:flex;gap:12px;align-items:center">
+    <div class="no-print" style="margin-bottom:12px;padding:10px 14px;background:#f3f4f6;border-radius:7px;display:flex;gap:12px;align-items:center">
       <strong style="font-size:15px">배송플랜 ${dlDate}</strong>
-      <span style="color:#666">총 ${totalCust}거래처 · ${plan.length}건</span>
+      <span style="color:#666">총 ${totalCust}거래처 · ${fullList.length}건</span>
       <button onclick="window.print()" style="margin-left:auto;padding:7px 18px;background:#1e293b;color:#fff;border:none;border-radius:5px;cursor:pointer;font-size:14px;font-weight:700">🖨 인쇄</button>
     </div>
-    ${sections}
+    <table>
+      <colgroup>
+        <col style="width:28px"><col style="width:72px"><col style="width:18%">
+        <col style="width:22%"><col style="width:38px"><col style="width:50px"><col>
+      </colgroup>
+      <thead><tr>
+        ${th('#','text-align:center')}${th('담당기사')}${th('거래처명')}
+        ${th('품목명')}${th('수량','text-align:center')}${th('구분','text-align:center')}${th('비고')}
+      </tr></thead>
+      <tbody>${bodyRows}</tbody>
+    </table>
     </body></html>`;
   const blob = new Blob([html], {type:'text/html;charset=utf-8'});
   const a = document.createElement('a');

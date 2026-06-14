@@ -90,8 +90,10 @@ input[type=file]{display:none}
 .tab-panel.active{display:block;overflow-y:auto;max-height:calc(100vh - 54px)}
 /* TABLE */
 .ptbl{width:100%;border-collapse:collapse;font-size:15px}
-.ptbl th{background:#141414;color:#e0e0e0;padding:11px 12px;font-weight:700;white-space:nowrap;text-align:left;border-bottom:2px solid #383838}
-.ptbl td{padding:10px 11px;border-bottom:none;vertical-align:top;word-break:break-word;overflow-wrap:break-word;color:#d8d8d8}
+.ptbl th{background:#141414;color:#e0e0e0;padding:11px 12px;font-weight:700;white-space:nowrap;text-align:left;border-bottom:2px solid #383838;border-right:1px solid #2e2e2e}
+.ptbl th:last-child{border-right:none}
+.ptbl td{padding:10px 11px;border-bottom:none;vertical-align:top;word-break:break-word;overflow-wrap:break-word;color:#d8d8d8;border-right:1px solid #2e2e2e}
+.ptbl td:last-child{border-right:none}
 .ptbl .grp-last td{border-bottom:2px solid #383838}
 .ptbl .grp-inner td{border-bottom:1px dashed #2e2e2e}
 .drv-sel{font-size:13px;padding:4px 7px;border:1px solid #383838;border-radius:5px;cursor:pointer;background:#1e1e1e;color:#e0e0e0;width:100%}
@@ -129,8 +131,8 @@ input[type=file]{display:none}
 .c1{background:#c2410c}.c2{background:#15803d}.c3{background:#1e40af}.c4{background:#6d28d9}.c5{background:#9d174d}.cmiss{background:#7f1d1d}.cspecial{background:#0e7490}.c2nd{background:#78350f}.ctbae{background:#0369a1}
 /* ALL-PANEL (전체 탭 화이트 배경) */
 .all-panel{background:#fff!important}
-.all-panel .ptbl th{background:#f3f4f6;color:#111;border-bottom:2px solid #d1d5db}
-.all-panel .ptbl td{color:#111}
+.all-panel .ptbl th{background:#f3f4f6;color:#111;border-bottom:2px solid #d1d5db;border-right:1px solid #d1d5db}
+.all-panel .ptbl td{color:#111;border-right:1px solid #e5e7eb}
 .all-panel .ptbl .cust{color:#111}
 .all-panel .ptbl .grp-last td{border-bottom:2px solid #d1d5db}
 .all-panel .ptbl .grp-inner td{border-bottom:1px dashed #e5e7eb}
@@ -493,8 +495,9 @@ function autoTextColor(bgHex) {
 
 function custDisplay(name) {
   if (!name) return '';
-  // 앞단어+괄호 조합을 nowrap으로 묶어 (에스테이블) 같은 괄호가 쪼개지지 않도록
-  return h(name).replace(/(\S+\([^)]*\))/g, '<span style="white-space:nowrap">$1</span>');
+  const chunks = [];
+  for (let i = 0; i < name.length; i += 15) chunks.push(h(name.slice(i, i + 15)));
+  return chunks.join('<br>');
 }
 
 function getDrvHex(drv) {

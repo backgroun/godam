@@ -137,6 +137,22 @@ input[type=file]{display:none}
 .tab-panel .ptbl .grp-last td{border-bottom:2px solid #d1d5db}
 .tab-panel .ptbl .grp-inner td{border-bottom:1px dashed #e5e7eb}
 .tab-panel .note{color:#666}
+/* FILTER BAR */
+.filter-bar{display:flex;align-items:center;gap:6px;padding:8px 12px;border-bottom:1px solid #e5e7eb;background:#f9fafb;flex-wrap:wrap}
+.filter-chip{display:inline-flex;align-items:center;gap:3px;padding:4px 10px;border:1px solid #d1d5db;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:#374151;white-space:nowrap;transition:.15s;line-height:1.4}
+.filter-chip:hover{background:#f3f4f6;border-color:#9ca3af}
+.filter-chip.flt-active{background:#3b82f6;color:#fff;border-color:#3b82f6}
+.filter-chip.flt-reset{color:#ef4444;border-color:#fca5a5;background:#fff}
+.filter-chip.flt-reset:hover{background:#fef2f2}
+.flt-cnt{display:inline-block;background:rgba(255,255,255,.35);border-radius:10px;padding:0 5px;font-size:11px;line-height:1.4}
+.flt-badge{margin-left:auto;font-size:12px;color:#6b7280;white-space:nowrap}
+/* Filter popup */
+#filter-popup{position:fixed;z-index:3000;background:#fff;border:1px solid #e5e7eb;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.18);padding:10px 12px;min-width:180px;max-height:320px;overflow-y:auto}
+.fpi{display:flex;align-items:center;gap:8px;padding:5px 4px;cursor:pointer;border-radius:6px;font-size:13px;user-select:none;color:#111}
+.fpi:hover{background:#f3f4f6}
+.fpi input[type=checkbox]{width:15px;height:15px;cursor:pointer;accent-color:#3b82f6;flex-shrink:0}
+.fpi-sep{border:none;border-top:1px solid #e5e7eb;margin:6px 0}
+.cswatch{display:inline-block;width:18px;height:18px;border-radius:4px;flex-shrink:0;border:1px solid #e5e7eb}
 /* MAP BUTTON */
 .map-btn{background:#0369a1;color:#fff}
 .map-btn:hover{background:#1d4ed8}
@@ -431,12 +447,6 @@ button:not(:disabled):active{transform:scale(0.95)!important;transition:transfor
 </div>
 
 <!-- 맨 위/아래 스크롤 버튼 -->
-<button id="scroll-top-btn" title="맨 위로"
-  onclick="window.scrollTo({top:0,behavior:'smooth'})"
-  style="position:fixed;right:16px;bottom:72px;width:42px;height:42px;border-radius:50%;background:#1e1e1e;border:1px solid #444;color:#bbb;font-size:18px;cursor:pointer;z-index:888;display:none;box-shadow:0 2px 8px rgba(0,0,0,.5)">▲</button>
-<button id="scroll-bot-btn" title="맨 아래로"
-  onclick="window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'})"
-  style="position:fixed;right:16px;bottom:22px;width:42px;height:42px;border-radius:50%;background:#1e1e1e;border:1px solid #444;color:#bbb;font-size:18px;cursor:pointer;z-index:888;box-shadow:0 2px 8px rgba(0,0,0,.5)">▼</button>
 
 <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
@@ -523,6 +533,7 @@ const DEFAULTS = [
 
 let masterLookup = null, orders = null, plan = null, specialPlan = [], secondaryPlan = [], dlDate = '', currentCfg = [];
 const tabMeta = new Map();
+const tabFilters = {};
 let addrHidden = true, searchComposing = false;
 
 const LS_DATA        = 'bp_master_v1';
@@ -970,15 +981,134 @@ function startEditAddr(cell) {
 }
 
 function filterSearch() {
-  const term = ($('search-inp').value || '').trim().toLowerCase();
   const active = document.querySelector('.tab-panel.active');
   if (!active || !tabMeta.has(active.id)) return;
-  const { rows, showDrv, showReassign, allowAddrAdd = true, isAll = false } = tabMeta.get(active.id);
-  const filtered = term
-    ? rows.filter(o => o.거래처명.toLowerCase().includes(term) || String(o.품목명||'').toLowerCase().includes(term))
-    : rows;
-  active.innerHTML = makePanelHTML(filtered, showDrv, showReassign, !addrHidden, allowAddrAdd, isAll);
+  reRenderTab(active.id);
 }
+
+// ── 필터 시스템 ──────────────────────────────────────────
+function getTF(tid) {
+  if (!tabFilters[tid]) tabFilters[tid] = { cols: {}, colors: new Set() };
+  return tabFilters[tid];
+}
+function applyTabFilter(rows, tid) {
+  const f = tabFilters[tid];
+  if (!f) return rows;
+  const hasCol = Object.values(f.cols).some(s => s.size);
+  if (!hasCol && !f.colors.size) return rows;
+  return rows.filter(o => {
+    for (const [col, vals] of Object.entries(f.cols)) {
+      if (!vals.size) continue;
+      if (!vals.has(String(o[col] || ''))) return false;
+    }
+    if (f.colors.size && !f.colors.has(o._bg || '__none__')) return false;
+    return true;
+  });
+}
+function reRenderTab(tid) {
+  const panel = document.getElementById(tid);
+  if (!panel || !tabMeta.has(tid)) return;
+  const { rows, showDrv, showReassign, allowAddrAdd = true, isAll = false } = tabMeta.get(tid);
+  const term = ($('search-inp')?.value || '').trim().toLowerCase();
+  let filtered = term ? rows.filter(o => o.거래처명.toLowerCase().includes(term) || String(o.품목명||'').toLowerCase().includes(term)) : rows;
+  filtered = applyTabFilter(filtered, tid);
+  panel.innerHTML = makePanelHTML(filtered, showDrv, showReassign, !addrHidden, allowAddrAdd, isAll, tid);
+}
+function genFilterBar(rows, filteredRows, tid, isAll, showDrv) {
+  const f = getTF(tid);
+  const mkChip = (col, label) => {
+    const sel = f.cols[col];
+    const active = sel && sel.size;
+    return `<button class="filter-chip${active?' flt-active':''}" onclick="openFilterPopup('${tid}','${col}',event)">${label}${active?` <span class="flt-cnt">${sel.size}</span>`:''} ▾</button>`;
+  };
+  const colorActive = f.colors && f.colors.size;
+  const chips = [
+    mkChip('구분', '구분'),
+    mkChip('구역', '구역'),
+    isAll && showDrv ? mkChip('담당기사', '담당기사') : '',
+    `<button class="filter-chip${colorActive?' flt-active':''}" onclick="openColorFilterPopup('${tid}',event)">색상${colorActive?` <span class="flt-cnt">${f.colors.size}</span>`:''} ▾</button>`,
+  ].filter(Boolean).join('');
+  const anyActive = colorActive || Object.values(f.cols).some(s => s.size);
+  const reset = anyActive ? `<button class="filter-chip flt-reset" onclick="resetTabFilter('${tid}')">✕ 초기화</button>` : '';
+  const badge = filteredRows.length < rows.length
+    ? `<span class="flt-badge">${filteredRows.length}/${rows.length}건</span>` : '';
+  return `<div class="filter-bar">${chips}${reset}${badge}</div>`;
+}
+function openFilterPopup(tid, col, evt) {
+  evt.stopPropagation();
+  closeFilterPopup();
+  const meta = tabMeta.get(tid);
+  if (!meta) return;
+  const vals = [...new Set(meta.rows.map(o => String(o[col] || '')))].filter(Boolean).sort();
+  const f = getTF(tid);
+  const sel = f.cols[col] || new Set();
+  const allChecked = !sel.size;
+  let html = `<div style="font-size:11px;font-weight:700;color:#888;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">${col}</div>`;
+  html += `<label class="fpi"><input type="checkbox" id="fpi-all" ${allChecked?'checked':''} onchange="toggleFilterAll('${tid}','${col}',this)"> 전체</label><hr class="fpi-sep">`;
+  vals.forEach(v => {
+    const esc = v.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    html += `<label class="fpi"><input type="checkbox" value="${h(v)}" ${sel.has(v)?'checked':''} onchange="toggleFilterVal('${tid}','${col}','${esc}')"> ${h(v)}</label>`;
+  });
+  showFPopup(html, evt.currentTarget);
+}
+function openColorFilterPopup(tid, evt) {
+  evt.stopPropagation();
+  closeFilterPopup();
+  const meta = tabMeta.get(tid);
+  if (!meta) return;
+  const colors = [...new Set(meta.rows.map(o => o._bg || '__none__'))];
+  const f = getTF(tid);
+  let html = `<div style="font-size:11px;font-weight:700;color:#888;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">색상</div>`;
+  html += `<label class="fpi"><input type="checkbox" id="fpi-all" ${!f.colors.size?'checked':''} onchange="toggleColorAll('${tid}',this)"> 전체</label><hr class="fpi-sep">`;
+  colors.forEach(c => {
+    const isNone = c === '__none__';
+    const bg = isNone ? '#ffffff' : c;
+    const lbl = isNone ? '기본(흰색)' : c.toUpperCase();
+    html += `<label class="fpi"><input type="checkbox" value="${c}" ${f.colors.has(c)?'checked':''} onchange="toggleColorFilter('${tid}','${c}')"><span class="cswatch" style="background:${bg}"></span>${lbl}</label>`;
+  });
+  showFPopup(html, evt.currentTarget);
+}
+function showFPopup(html, anchor) {
+  const div = document.createElement('div');
+  div.id = 'filter-popup';
+  div.innerHTML = html;
+  document.body.appendChild(div);
+  const r = anchor.getBoundingClientRect();
+  div.style.top = (r.bottom + 6) + 'px';
+  div.style.left = Math.max(4, Math.min(r.left, window.innerWidth - 210)) + 'px';
+}
+function closeFilterPopup() { document.getElementById('filter-popup')?.remove(); }
+function toggleFilterAll(tid, col, cb) {
+  if (cb.checked) getTF(tid).cols[col] = new Set();
+  reRenderTab(tid);
+}
+function toggleFilterVal(tid, col, val) {
+  const f = getTF(tid);
+  if (!f.cols[col]) f.cols[col] = new Set();
+  f.cols[col].has(val) ? f.cols[col].delete(val) : f.cols[col].add(val);
+  const allCb = document.querySelector('#filter-popup #fpi-all');
+  if (allCb) allCb.checked = f.cols[col].size === 0;
+  reRenderTab(tid);
+}
+function toggleColorAll(tid, cb) {
+  if (cb.checked) getTF(tid).colors = new Set();
+  reRenderTab(tid);
+}
+function toggleColorFilter(tid, color) {
+  const f = getTF(tid);
+  f.colors.has(color) ? f.colors.delete(color) : f.colors.add(color);
+  const allCb = document.querySelector('#filter-popup #fpi-all');
+  if (allCb) allCb.checked = f.colors.size === 0;
+  reRenderTab(tid);
+}
+function resetTabFilter(tid) {
+  delete tabFilters[tid];
+  closeFilterPopup();
+  reRenderTab(tid);
+}
+document.addEventListener('click', e => {
+  if (!e.target.closest('#filter-popup') && !e.target.closest('.filter-chip')) closeFilterPopup();
+});
 
 function openAddrSearch(cell) {
   if (typeof daum === 'undefined' || !daum.Postcode) {
@@ -1011,7 +1141,7 @@ function toggleAddressCol() {
   document.querySelectorAll('.tab-panel').forEach(p => {
     if (!tabMeta.has(p.id)) return;
     const { rows, showDrv, showReassign, allowAddrAdd = true, isAll = false } = tabMeta.get(p.id);
-    p.innerHTML = makePanelHTML(rows, showDrv, showReassign, !addrHidden, allowAddrAdd, isAll);
+    p.innerHTML = makePanelHTML(rows, showDrv, showReassign, !addrHidden, allowAddrAdd, isAll, p.id);
   });
 }
 
@@ -1590,7 +1720,9 @@ function getDriver(zone, cfg){
   return '미배정';
 }
 
-function makePanelHTML(rows, showDrv, showReassign, showAddr = true, allowAddrAdd = true, isAll = false) {
+function makePanelHTML(rows, showDrv, showReassign, showAddr = true, allowAddrAdd = true, isAll = false, tabId = null) {
+  const allRows = tabId && tabMeta.has(tabId) ? tabMeta.get(tabId).rows : rows;
+  const filterBar = tabId ? genFilterBar(allRows, rows, tabId, isAll, showDrv) : '';
   const map = new Map();
   rows.forEach(o => {
     if (!map.has(o.거래처명)) map.set(o.거래처명, { meta: o, items: [] });
@@ -1611,8 +1743,9 @@ function makePanelHTML(rows, showDrv, showReassign, showAddr = true, allowAddrAd
     seq++;
     const n = items.length;
     const stripe = seq % 2 === 1 ? '#ffffff' : '#f9fafb';
+    const shortN = n => n.replace(/ 기사$/, '');
     const drvOpts = showReassign ? [...currentCfg.map(d=>d.name),'택배','미배정']
-      .map(d=>`<option value="${h(d)}"${o.담당기사===d?' selected':''}>${h(d)}</option>`).join('') : '';
+      .map(d=>`<option value="${h(d)}"${o.담당기사===d?' selected':''}>${h(shortN(d))}</option>`).join('') : '';
     return items.map((item, idx) => {
       const isLast = idx === n - 1;
       const cls = n > 1 ? (isLast ? ' class="grp-last"' : ' class="grp-inner"') : '';
@@ -1669,7 +1802,7 @@ function makePanelHTML(rows, showDrv, showReassign, showAddr = true, allowAddrAd
         </tr>`;
     }).join('');
   }).join('');
-  return `<div class="ptbl-wrap"><table class="ptbl"><thead><tr>${hdr}</tr></thead><tbody>${body}</tbody></table></div>`;
+  return filterBar + `<div class="ptbl-wrap"><table class="ptbl"><thead><tr>${hdr}</tr></thead><tbody>${body}</tbody></table></div>`;
 }
 
 function generate(){
@@ -1761,7 +1894,7 @@ function renderResults(cfg){
     const panelAll = document.createElement('div');
     panelAll.className = 'tab-panel all-panel active';
     panelAll.id = 'tab_all';
-    panelAll.innerHTML = makePanelHTML(fullList, true, true, !addrHidden, true, true);
+    panelAll.innerHTML = makePanelHTML(fullList, true, true, !addrHidden, true, true, 'tab_all');
     tabMeta.set('tab_all', { rows: fullList, showDrv: true, showReassign: true, isAll: true });
     tp.appendChild(panelAll);
   }
@@ -1790,7 +1923,7 @@ function renderResults(cfg){
     panel.id = sid;
 
     const sorted = [...sub].sort((a,b)=>a.구역.localeCompare(b.구역)||(a.배송주소||'').localeCompare(b.배송주소||'')||a.거래처명.localeCompare(b.거래처명));
-    panel.innerHTML = makePanelHTML(sorted, false, true, !addrHidden);
+    panel.innerHTML = makePanelHTML(sorted, false, true, !addrHidden, true, false, sid);
     tabMeta.set(sid, { rows: sorted, showDrv: false, showReassign: true });
     tp.appendChild(panel);
   });
@@ -1814,7 +1947,7 @@ function renderResults(cfg){
     panel2.className = 'tab-panel';
     panel2.id = 'tab_secondary';
     const sorted2 = [...secondaryPlan].sort((a,b)=>a.거래처명.localeCompare(b.거래처명));
-    panel2.innerHTML = makePanelHTML(sorted2, false, false, !addrHidden, false);
+    panel2.innerHTML = makePanelHTML(sorted2, false, false, !addrHidden, false, false, 'tab_secondary');
     tabMeta.set('tab_secondary', { rows: sorted2, showDrv: false, showReassign: false, allowAddrAdd: false });
     tp.appendChild(panel2);
   }
@@ -1838,7 +1971,7 @@ function renderResults(cfg){
     panel.className = 'tab-panel';
     panel.id = 'tab_special_nari';
     const sorted = [...specialPlan].sort((a,b)=>a.거래처명.localeCompare(b.거래처명));
-    panel.innerHTML = makePanelHTML(sorted, false, false, !addrHidden);
+    panel.innerHTML = makePanelHTML(sorted, false, false, !addrHidden, true, false, 'tab_special_nari');
     tabMeta.set('tab_special_nari', { rows: sorted, showDrv: false, showReassign: false, allowAddrAdd: true });
     tp.appendChild(panel);
   }
@@ -1948,10 +2081,6 @@ function playClick() {
 document.addEventListener('click', e => {
   if (e.target.closest('button') && !e.target.closest('button').disabled) playClick();
 }, true);
-window.addEventListener('scroll', () => {
-  const btn = document.getElementById('scroll-top-btn');
-  if (btn) btn.style.display = window.scrollY > 300 ? '' : 'none';
-});
 
 // ── 인쇄용 HTML 저장 ────────────────────────────────────
 function dlPrintHTML() {

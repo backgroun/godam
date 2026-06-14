@@ -461,10 +461,8 @@ function autoTextColor(bgHex) {
 
 function custDisplay(name) {
   if (!name) return '';
-  if (name.length <= 15) return h(name);
-  const parts = [];
-  for (let i = 0; i < name.length; i += 15) parts.push(h(name.slice(i, i+15)));
-  return parts.join('<br>');
+  // 앞단어+괄호 조합을 nowrap으로 묶어 (에스테이블) 같은 괄호가 쪼개지지 않도록
+  return h(name).replace(/(\S+\([^)]*\))/g, '<span style="white-space:nowrap">$1</span>');
 }
 
 function getDrvHex(drv) {
@@ -1399,7 +1397,7 @@ function makePanelHTML(rows, showDrv, showReassign, showAddr = true, allowAddrAd
   const drvTh = showDrv ? `<th>담당기사</th>` : '';
   const raTh = showReassign ? `<th>배정변경</th>` : '';
   const addrTh = showAddr ? `<th>배송주소</th>` : '';
-  const hdr = `<th>#</th><th>구역</th>${drvTh}<th>거래처명</th>${raTh}<th>품목명</th><th style="min-width:55px">수량</th><th style="min-width:80px">구분</th><th>비고</th>${addrTh}`;
+  const hdr = `<th style="min-width:36px;text-align:center">#</th><th>구역</th>${drvTh}<th>거래처명</th>${raTh}<th>품목명</th><th style="min-width:55px">수량</th><th style="min-width:80px">구분</th><th>비고</th>${addrTh}`;
   let seq = 0;
   const body = groups.map(({ meta: o, items }) => {
     seq++;
@@ -1432,7 +1430,7 @@ function makePanelHTML(rows, showDrv, showReassign, showAddr = true, allowAddrAd
             : `<td style="${s}"></td>`
         ) : '';
         return `<tr${cls}>
-          <td style="${s};text-align:center;color:#888">${seq}</td>
+          <td style="${s};text-align:center;color:#888;white-space:nowrap;min-width:36px">${seq}</td>
           <td style="${s}"><span class="zchip" style="${ZONE_STYLE[o.구역]||ZONE_STYLE['기타']}">${h(o.구역)}</span></td>
           ${drvCell}
           <td class="cust" style="${s}${manualItalic}">${custDisplay(o.거래처명)}</td>

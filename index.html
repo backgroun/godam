@@ -1553,7 +1553,10 @@ function parseOrders(wb, colorMap={}){
     const cellRef = XLSX.utils.encode_cell({r: i, c: nameCol >= 0 ? nameCol : 0});
     const clr = colorMap[cellRef] || {};
     if (clr.bg) obj._bg = clr.bg;
-    if (clr.font) obj._font = clr.font;
+    if (clr.font) {
+      const uf = clr.font.toUpperCase();
+      obj._font = (uf==='#C03A2C'||uf==='#C0392B') ? '#FF8073' : clr.font;
+    }
     orders.push(obj);
   }
   let date = new Date().toISOString().slice(0,10).replace(/-/g,'');

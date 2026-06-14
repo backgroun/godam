@@ -1385,7 +1385,18 @@ function handleFile(file, type){
   const reader = new FileReader();
   reader.onload = e => {
     try {
-      const wb = XLSX.read(new Uint8Array(e.target.result), {type:'array', raw:false});
+      const wb = XLSX.read(new Uint8Array(e.target.result), {type:'array', raw:false, cellStyles:true});
+      // ── 구조 디버그 (1회) ──
+      try {
+        console.log('[wb keys]', Object.keys(wb));
+        const S = wb.Styles;
+        console.log('[wb.Styles]', S ? JSON.stringify(S).slice(0,600) : 'undefined');
+        const ws0 = wb.Sheets[wb.SheetNames[0]];
+        ['B2','B3','B4','B5','B6','B7','B8'].forEach(r => {
+          const c = ws0[r];
+          if (c) console.log('[cell '+r+']', JSON.stringify(c).slice(0,200));
+        });
+      } catch(e) { console.warn('debug err', e); }
       if (type === 'master'){
         masterLookup = parseMaster(wb);
         saveMaster(masterLookup, file.name);

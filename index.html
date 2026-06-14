@@ -202,9 +202,9 @@ button:not(:disabled):active{transform:scale(0.95)!important;transition:transfor
   .tabs{flex-wrap:nowrap;overflow-x:auto;gap:3px;padding-bottom:2px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
   .tabs::-webkit-scrollbar{display:none}
   .tab-btn{padding:10px 14px;font-size:13px;white-space:nowrap;min-height:44px}
-  .tab-panel{padding:10px 6px}
-  /* 테이블: 구역·비고 숨긴 후 남은 컬럼에 최적화 */
-  .ptbl{font-size:13px;min-width:0;table-layout:fixed;width:100%}
+  .tab-panel{padding:0}
+  /* 테이블: 가로 스크롤 최적화 */
+  .ptbl{font-size:13px;min-width:560px}
   .ptbl th{padding:10px 7px;font-size:12px;word-break:keep-all}
   .ptbl td{padding:9px 7px;font-size:13px;overflow-wrap:anywhere;word-break:break-all}
   .tab-panel .ptbl th{padding:4px 5px;font-size:12px}
@@ -1643,7 +1643,7 @@ function makePanelHTML(rows, showDrv, showReassign, showAddr = true, allowAddrAd
           <td class="mob-hide" style="${s}"><span class="zchip" style="${ZONE_STYLE[o.구역]||ZONE_STYLE['기타']}">${h(o.구역)}</span></td>
           ${drvCell}
           <td class="cust" style="${s}${manualItalic}${manualColor}">${custDisplay(o.거래처명)}</td>
-          <td style="${s};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${h(item.품목명)}</td>
+          <td style="${s}">${h(item.품목명)}</td>
           <td style="${s};text-align:center;white-space:nowrap">${h(item.수량)}</td>
           <td style="${s};text-align:center;white-space:nowrap">${h(item.구분)}</td>
           <td class="note${noteHide}" style="${s};white-space:nowrap">${note}</td>
@@ -1660,7 +1660,7 @@ function makePanelHTML(rows, showDrv, showReassign, showAddr = true, allowAddrAd
           <td class="mob-hide" style="${s}"></td>
           ${drvCell}
           <td style="${s}"></td>
-          <td style="${s};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${h(item.품목명)}</td>
+          <td style="${s}">${h(item.품목명)}</td>
           <td style="${s};text-align:center;white-space:nowrap">${h(item.수량)}</td>
           <td style="${s};text-align:center;white-space:nowrap">${h(item.구분)}</td>
           <td class="note${noteHide}" style="${s};white-space:nowrap">${note}</td>

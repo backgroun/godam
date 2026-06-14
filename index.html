@@ -509,12 +509,15 @@ function autoTextColor(bgHex) {
   return (0.299*r + 0.587*g + 0.114*b) / 255 > 0.5 ? '#111111' : '#ffffff';
 }
 
-function custDisplay(name) {
-  if (!name) return '';
+function chunkStr(str, size) {
+  if (!str) return '';
+  const chars = [...str]; // surrogate-pair 안전 처리
   const chunks = [];
-  for (let i = 0; i < name.length; i += 15) chunks.push(h(name.slice(i, i + 15)));
+  for (let i = 0; i < chars.length; i += size) chunks.push(h(chars.slice(i, i + size).join('')));
   return chunks.join('<br>');
 }
+function custDisplay(name) { return chunkStr(name, 15); }
+function itemDisplay(name) { return chunkStr(name, 15); }
 
 function getDrvHex(drv) {
   const allDrvs = [...currentCfg.map(d=>d.name), '택배', '미배정'];
@@ -1776,7 +1779,7 @@ function makePanelHTML(rows, showDrv, showReassign, showAddr = true, allowAddrAd
           <td class="mob-hide" style="${s}"><span class="zchip" style="${ZONE_STYLE[o.구역]||ZONE_STYLE['기타']}">${h(o.구역)}</span></td>
           ${drvCell}
           <td class="cust" style="${s}${manualItalic}${manualColor}">${custDisplay(o.거래처명)}</td>
-          <td style="${s}">${h(item.품목명)}</td>
+          <td style="${s}">${itemDisplay(item.품목명)}</td>
           <td style="${s};text-align:center;white-space:nowrap">${h(item.수량)}</td>
           <td style="${s};text-align:center;white-space:nowrap">${h(item.구분)}</td>
           <td class="note${noteHide}" style="${s};white-space:nowrap">${note}</td>
@@ -1793,7 +1796,7 @@ function makePanelHTML(rows, showDrv, showReassign, showAddr = true, allowAddrAd
           <td class="mob-hide" style="${s}"></td>
           ${drvCell}
           <td style="${s}"></td>
-          <td style="${s}">${h(item.품목명)}</td>
+          <td style="${s}">${itemDisplay(item.품목명)}</td>
           <td style="${s};text-align:center;white-space:nowrap">${h(item.수량)}</td>
           <td style="${s};text-align:center;white-space:nowrap">${h(item.구분)}</td>
           <td class="note${noteHide}" style="${s};white-space:nowrap">${note}</td>

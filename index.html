@@ -396,6 +396,7 @@ button:not(:disabled):active{transform:scale(0.95)!important;transition:transfor
   </div>
   <div class="actions">
     <button class="abtn" onclick="mobSwitch('upload')" style="background:#374151;color:#fff">📂 파일관리</button>
+    <button class="abtn" onclick="shareLink()" style="background:#0369a1;color:#fff">📱 공유</button>
     <button class="abtn map-btn" onclick="openMapView()">[지도]</button>
     <button class="abtn print-btn" onclick="dlPrintHTML()">[인쇄]</button>
     <button class="abtn dl-btn" onclick="dlExcel()">[엑셀]</button>
@@ -423,6 +424,7 @@ button:not(:disabled):active{transform:scale(0.95)!important;transition:transfor
 <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
 <script>
 const $ = id => document.getElementById(id);
 
@@ -1291,6 +1293,19 @@ const savedDrvs = loadDriversFromStorage();
 setupDnD();
 document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModal('drv-modal'); closeModal('master-modal'); } });
 window.addEventListener('load', () => {
+  // URL 해시에 공유 플랜 데이터가 있으면 우선 복원
+  let sharedPlan = null;
+  const hashMatch = location.hash.match(/^#plan=(.+)$/);
+  if (hashMatch && typeof LZString !== 'undefined') {
+    try {
+      const parsed = JSON.parse(LZString.decompressFromEncodedURIComponent(hashMatch[1]));
+      if (parsed && parsed.plan && parsed.plan.length) {
+        sharedPlan = parsed;
+        history.replaceState(null, '', location.pathname);
+      }
+    } catch(e) { console.warn('공유 링크 파싱 실패:', e); }
+  }
+
   // 저장된 마스터 데이터 복원 (XLSX 불필요 — JSON 직접 파싱)
   const saved = loadMasterFromStorage();
   if (saved) {
@@ -1305,14 +1320,15 @@ window.addEventListener('load', () => {
     showCachedOrders(savedOrders.meta);
   }
   $('gen-btn').disabled = !(masterLookup && orders);
-  // 저장된 배송플랜 복원
-  const savedPlan = loadPlanFromStorage();
-  if (savedPlan && savedPlan.plan) {
-    plan = savedPlan.plan;
-    specialPlan = savedPlan.specialPlan || [];
-    secondaryPlan = savedPlan.secondaryPlan || [];
-    currentCfg = savedPlan.currentCfg || [];
-    dlDate = savedPlan.dlDate || dlDate;
+  // 공유 링크 우선, 없으면 localStorage 복원
+  const sourceData = sharedPlan || loadPlanFromStorage();
+  if (sourceData && sourceData.plan) {
+    plan = sourceData.plan;
+    specialPlan = sourceData.specialPlan || [];
+    secondaryPlan = sourceData.secondaryPlan || [];
+    currentCfg = sourceData.currentCfg || [];
+    dlDate = sourceData.dlDate || dlDate;
+    if (sharedPlan) { savePlan(); showToast('📱 공유 플랜이 로드됐습니다.'); }
     renderResults(currentCfg);
     $('results').style.display = 'block';
   }
@@ -1804,6 +1820,27 @@ function dlExcel(){
   XLSX.utils.book_append_sheet(wb, ws3, '구역별요약');
 
   XLSX.writeFile(wb, `배송플랜_${dlDate}.xlsx`, {cellStyles: true});
+}
+
+// ── 모바일 공유 링크 ─────────────────────────────────────
+function shareLink() {
+  if (!plan || !plan.length) { showToast('먼저 배송플랜을 생성하세요.', '#ef4444'); return; }
+  if (typeof LZString === 'undefined') { showToast('LZString 라이브러리 로드 실패', '#ef4444'); return; }
+  const data = JSON.stringify({plan, specialPlan, secondaryPlan, currentCfg, dlDate});
+  const compressed = LZString.compressToEncodedURIComponent(data);
+  const url = `${location.origin}${location.pathname}#plan=${compressed}`;
+  navigator.clipboard.writeText(url).then(() => {
+    showToast('📱 공유 링크 복사 완료! 모바일에서 링크를 열면 리스트가 자동으로 표시됩니다.');
+  }).catch(() => {
+    const ta = document.createElement('textarea');
+    ta.value = url;
+    ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    ta.remove();
+    showToast('📱 공유 링크 복사 완료! 모바일에서 링크를 열면 리스트가 자동으로 표시됩니다.');
+  });
 }
 
 // ── 토스트 알림 ──────────────────────────────────────────

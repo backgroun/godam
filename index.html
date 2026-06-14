@@ -1594,7 +1594,7 @@ function makePanelHTML(rows, showDrv, showReassign, showAddr = true, allowAddrAd
   const raTh = showReassign ? `<th class="mob-hide">배정변경</th>` : '';
   const addrTh = showAddr ? `<th class="mob-hide">배송주소</th>` : '';
   const noteHide = isAll ? '' : ' mob-hide';
-  const hdr = `<th style="min-width:32px;text-align:center">#</th><th class="mob-hide">구역</th>${drvTh}<th>거래처명</th><th>품목명</th><th style="min-width:48px;text-align:center">수량</th><th style="min-width:60px;text-align:center">구분</th><th class="note${noteHide}" style="width:65px">비고</th>${raTh}${addrTh}`;
+  const hdr = `<th style="min-width:32px;text-align:center">#</th><th class="mob-hide">구역</th>${drvTh}<th>거래처명</th><th>품목명</th><th style="min-width:48px;text-align:center">수량</th><th style="min-width:60px;text-align:center">구분</th><th class="note${noteHide}" style="width:95px">비고</th>${raTh}${addrTh}`;
   let seq = 0;
   const body = groups.map(({ meta: o, items }) => {
     seq++;
@@ -2031,7 +2031,7 @@ function dlMasterExcel() {
 // ── 모바일 탭 전환 ───────────────────────────────────────
 function mobSwitch(tab) {
   const isMob = window.innerWidth <= 768;
-  const uploadEls = ['upload-section','gen-section'];
+  const uploadEls = ['gen-section'];
   const listEl = $('results');
   if (tab === 'upload') {
     uploadEls.forEach(id => { const el=$(id); if(el) el.style.display=''; });

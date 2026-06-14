@@ -174,39 +174,43 @@ button:not(:disabled):active{transform:scale(0.95)!important;transition:transfor
 }
 /* MOBILE */
 @media(max-width:768px){
-  .wrap{padding:16px 12px 60px}
-  .hdr{margin-bottom:20px}
-  .hdr h1{font-size:22px}
-  .hdr .sub{font-size:13px}
-  .card{padding:14px 16px;border-radius:12px;margin-bottom:12px}
-  .upload-card{padding:10px 14px}
+  .wrap{padding:12px 10px 70px}
+  .hdr{margin-bottom:16px}
+  .hdr h1{font-size:20px}
+  .hdr .sub{font-size:12px}
+  .card{padding:12px 14px;border-radius:12px;margin-bottom:10px}
+  .upload-card{padding:10px 12px}
   .uprow{grid-template-columns:1fr;gap:8px}
   .up-arr{display:none}
   .action-btn{font-size:12px;padding:11px 6px}
-  .gen-btn{font-size:14px;padding:11px}
-  .sum-grid{grid-template-columns:repeat(3,1fr);gap:6px}
-  .sc{padding:10px 10px;border-radius:10px}
-  .sc .drv{font-size:11px}
-  .sc .big{font-size:22px}
+  .gen-btn{font-size:14px;padding:12px}
+  /* 기사 카드 그리드: 2열 */
+  .sum-grid{grid-template-columns:repeat(2,1fr);gap:8px}
+  .sc{padding:12px 12px;border-radius:12px}
+  .sc .drv{font-size:12px}
+  .sc .big{font-size:22px;line-height:1.1}
   .sc .zns{display:none}
-  .sc-btns{gap:4px;margin-top:8px}
-  .share-btn{font-size:12px;padding:8px 4px;min-height:40px}
-  .tabs{flex-wrap:nowrap;overflow-x:auto;gap:3px;padding-bottom:2px;-webkit-overflow-scrolling:touch}
-  .tabs::-webkit-scrollbar{height:0}
-  .tab-btn{padding:9px 14px;font-size:13px;white-space:nowrap}
-  .tab-panel{padding:10px 8px}
-  .ptbl{font-size:13px}
-  .ptbl th{padding:9px 8px;font-size:13px}
-  .ptbl td{padding:8px 8px;font-size:13px}
+  .sc-btns{gap:6px;margin-top:10px}
+  .share-btn{font-size:13px;padding:10px 6px;min-height:44px}
+  /* 탭 스크롤 */
+  .tabs{flex-wrap:nowrap;overflow-x:auto;gap:3px;padding-bottom:2px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  .tabs::-webkit-scrollbar{display:none}
+  .tab-btn{padding:10px 14px;font-size:13px;white-space:nowrap;min-height:44px}
+  .tab-panel{padding:10px 6px}
+  /* 테이블: 구역·비고 숨긴 후 남은 컬럼에 최적화 */
+  .ptbl{font-size:13px;min-width:0;table-layout:fixed;width:100%}
+  .ptbl th{padding:10px 7px;font-size:12px}
+  .ptbl td{padding:9px 7px;font-size:13px}
   .cust{font-size:13px}
   .note{font-size:12px}
   .zchip{font-size:11px;padding:2px 6px}
   #search-row{flex-wrap:wrap;gap:6px}
-  .search-inp{font-size:14px;padding:10px 12px}
-  .search-btn{padding:10px 14px;font-size:13px}
-  .addr-toggle-btn{padding:10px 12px;font-size:12px}
-  .actions{flex-wrap:wrap;gap:8px}
-  .abtn{flex:1;min-width:120px;padding:12px 16px;font-size:14px;text-align:center}
+  .search-inp{font-size:15px;padding:11px 12px}
+  .search-btn{padding:11px 16px;font-size:14px;min-height:44px}
+  .addr-toggle-btn{padding:11px 12px;font-size:13px;min-height:44px}
+  /* 액션 버튼 2×2 그리드 */
+  .actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+  .actions .abtn{padding:13px 8px;font-size:14px;text-align:center;min-height:48px}
   .dtbl{font-size:13px}
   .dtbl th,.dtbl td{padding:7px 8px}
   .stg-btn-row{flex-wrap:wrap}
@@ -214,8 +218,12 @@ button:not(:disabled):active{transform:scale(0.95)!important;transition:transfor
 }
 @media(max-width:480px){
   .sum-grid{grid-template-columns:repeat(2,1fr)}
-  .sc .big{font-size:20px}
-  .hdr h1{font-size:20px}
+  .sc .big{font-size:19px}
+  .sc .drv{font-size:11px}
+  .hdr h1{font-size:18px}
+  .ptbl th{font-size:11px;padding:8px 5px}
+  .ptbl td{font-size:12px;padding:8px 5px}
+  .tab-btn{padding:9px 11px;font-size:12px}
 }
 </style>
 </head>
@@ -1502,7 +1510,7 @@ function makePanelHTML(rows, showDrv, showReassign, showAddr = true, allowAddrAd
   const drvTh = showDrv ? `<th class="mob-hide">담당기사</th>` : '';
   const raTh = showReassign ? `<th class="mob-hide">배정변경</th>` : '';
   const addrTh = showAddr ? `<th class="mob-hide">배송주소</th>` : '';
-  const hdr = `<th style="min-width:36px;text-align:center">#</th><th>구역</th>${drvTh}<th>거래처명</th><th>품목명</th><th style="min-width:55px">수량</th><th style="min-width:80px">구분</th><th>비고</th>${raTh}${addrTh}`;
+  const hdr = `<th style="min-width:32px;text-align:center">#</th><th class="mob-hide">구역</th>${drvTh}<th>거래처명</th><th>품목명</th><th style="min-width:48px;text-align:center">수량</th><th style="min-width:60px;text-align:center">구분</th><th class="mob-hide">비고</th>${raTh}${addrTh}`;
   let seq = 0;
   const body = groups.map(({ meta: o, items }) => {
     seq++;
@@ -1535,14 +1543,14 @@ function makePanelHTML(rows, showDrv, showReassign, showAddr = true, allowAddrAd
             : `<td class="mob-hide" style="${s}"></td>`
         ) : '';
         return `<tr${cls}>
-          <td style="${s};text-align:center;color:#888;white-space:nowrap;min-width:36px">${seq}</td>
-          <td style="${s}"><span class="zchip" style="${ZONE_STYLE[o.구역]||ZONE_STYLE['기타']}">${h(o.구역)}</span></td>
+          <td style="${s};text-align:center;color:#888;white-space:nowrap;min-width:32px">${seq}</td>
+          <td class="mob-hide" style="${s}"><span class="zchip" style="${ZONE_STYLE[o.구역]||ZONE_STYLE['기타']}">${h(o.구역)}</span></td>
           ${drvCell}
           <td class="cust" style="${s}${manualItalic}">${custDisplay(o.거래처명)}</td>
           <td style="${s};white-space:nowrap">${h(item.품목명)}</td>
           <td style="${s};text-align:center;white-space:nowrap">${h(item.수량)}</td>
           <td style="${s};text-align:center;white-space:nowrap">${h(item.구분)}</td>
-          <td class="note" style="${s}">${note}</td>
+          <td class="note mob-hide" style="${s}">${note}</td>
           ${raCell}
           ${addrCell}
         </tr>`;
@@ -1553,13 +1561,13 @@ function makePanelHTML(rows, showDrv, showReassign, showAddr = true, allowAddrAd
       const addrCell = showAddr ? `<td class="mob-hide" style="${s}"></td>` : '';
       return `<tr${cls}>
           <td style="${s}"></td>
-          <td style="${s}"></td>
+          <td class="mob-hide" style="${s}"></td>
           ${drvCell}
           <td style="${s}"></td>
           <td style="${s};white-space:nowrap">${h(item.품목명)}</td>
           <td style="${s};text-align:center;white-space:nowrap">${h(item.수량)}</td>
           <td style="${s};text-align:center;white-space:nowrap">${h(item.구분)}</td>
-          <td class="note" style="${s}">${note}</td>
+          <td class="note mob-hide" style="${s}">${note}</td>
           ${raCell}
           ${addrCell}
         </tr>`;

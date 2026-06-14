@@ -86,11 +86,12 @@ input[type=file]{display:none}
 .tab-btn{padding:9px 16px;border:1px solid #2e2e2e;border-bottom:none;border-radius:10px 10px 0 0;cursor:pointer;font-size:13px;font-weight:700;background:#181818;color:#999;transition:.12s;white-space:nowrap;flex-shrink:0}
 .tab-btn:hover{color:#ddd;background:#222}
 .tab-btn.active{background:#0d0d0d;color:#fff;border-color:#666;margin-bottom:-1px;z-index:1;position:relative}
-.tab-panel{background:#0d0d0d;border:1px solid #2e2e2e;border-radius:0 10px 10px 10px;padding:16px;margin-bottom:16px;display:none;overflow-x:auto}
+.tab-panel{background:#0d0d0d;border:1px solid #2e2e2e;border-radius:0 10px 10px 10px;padding:0;margin-bottom:16px;display:none;overflow:hidden}
 .tab-panel.active{display:block;overflow-y:auto;max-height:calc(100vh - 54px)}
 /* TABLE */
 .ptbl{width:100%;border-collapse:separate;border-spacing:0;font-size:15px}
-.ptbl th{background:#141414;color:#e0e0e0;padding:11px 12px;font-weight:700;white-space:nowrap;text-align:left;border-bottom:2px solid #383838;border-right:1px solid #2e2e2e;position:sticky;top:0;z-index:10}
+.ptbl thead{position:sticky;top:0;z-index:10}
+.ptbl th{background:#141414;color:#e0e0e0;padding:11px 12px;font-weight:700;white-space:nowrap;text-align:left;border-bottom:2px solid #383838;border-right:1px solid #2e2e2e}
 .ptbl th:last-child{border-right:none}
 .ptbl td{padding:10px 11px;border-bottom:none;vertical-align:top;word-break:break-word;overflow-wrap:break-word;color:#d8d8d8;border-right:1px solid #2e2e2e}
 .ptbl td:last-child{border-right:none}
@@ -1599,7 +1600,7 @@ function makePanelHTML(rows, showDrv, showReassign, showAddr = true, allowAddrAd
   const raTh = showReassign ? `<th class="mob-hide">배정변경</th>` : '';
   const addrTh = showAddr ? `<th class="mob-hide">배송주소</th>` : '';
   const noteHide = isAll ? '' : ' mob-hide';
-  const hdr = `<th style="min-width:32px;text-align:center">#</th><th class="mob-hide">구역</th>${drvTh}<th>거래처명</th><th>품목명</th><th style="min-width:48px;text-align:center">수량</th><th style="min-width:60px;text-align:center">구분</th><th class="note${noteHide}" style="width:95px">비고</th>${raTh}${addrTh}`;
+  const hdr = `<th style="min-width:32px;text-align:center">#</th><th class="mob-hide">구역</th>${drvTh}<th>거래처명</th><th>품목명</th><th style="min-width:48px;text-align:center">수량</th><th style="min-width:60px;text-align:center">구분</th><th class="note${noteHide}" style="min-width:200px">비고</th>${raTh}${addrTh}`;
   let seq = 0;
   const body = groups.map(({ meta: o, items }) => {
     seq++;
@@ -1642,7 +1643,7 @@ function makePanelHTML(rows, showDrv, showReassign, showAddr = true, allowAddrAd
           <td style="${s};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${h(item.품목명)}</td>
           <td style="${s};text-align:center;white-space:nowrap">${h(item.수량)}</td>
           <td style="${s};text-align:center;white-space:nowrap">${h(item.구분)}</td>
-          <td class="note${noteHide}" style="${s}">${note}</td>
+          <td class="note${noteHide}" style="${s};white-space:nowrap">${note}</td>
           ${raCell}
           ${addrCell}
         </tr>`;
@@ -1659,7 +1660,7 @@ function makePanelHTML(rows, showDrv, showReassign, showAddr = true, allowAddrAd
           <td style="${s};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${h(item.품목명)}</td>
           <td style="${s};text-align:center;white-space:nowrap">${h(item.수량)}</td>
           <td style="${s};text-align:center;white-space:nowrap">${h(item.구분)}</td>
-          <td class="note${noteHide}" style="${s}">${note}</td>
+          <td class="note${noteHide}" style="${s};white-space:nowrap">${note}</td>
           ${raCell}
           ${addrCell}
         </tr>`;

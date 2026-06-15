@@ -66,12 +66,20 @@ input[type=file]{display:none}
 /* GENERATE / MAIN ACTION BAR */
 .main-actions{display:flex;gap:8px;align-items:center;margin-bottom:16px;flex-wrap:wrap}
 .main-search{display:flex;gap:6px;flex:1 1 220px;min-width:0}
-.gen-btn{flex:0 0 auto;padding:12px 16px;border:none;border-radius:12px;font-size:14px;font-weight:800;cursor:pointer;transition:.15s;letter-spacing:-.3px;white-space:nowrap}
-.gen-btn:not(:disabled){background:#fff;color:#000}
-.gen-btn:not(:disabled):hover{background:#efefef;transform:translateY(-1px);box-shadow:0 6px 24px rgba(255,255,255,.15)}
-.gen-btn:disabled{background:#1a1a1a;color:#666;cursor:not-allowed;border:1px solid #2a2a2a}
-.action-btn{flex:0 0 auto;padding:12px 14px;border:1px solid #333;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;background:#1a1a1a;color:#bbb;transition:.15s;letter-spacing:-.3px;white-space:nowrap}
-.action-btn:hover{background:#262626;color:#fff;border-color:#555}
+.gen-btn{flex:0 0 auto;padding:12px 16px;border:none;border-radius:12px;font-size:14px;font-weight:800;cursor:pointer;transition:transform .1s,box-shadow .1s;letter-spacing:-.3px;white-space:nowrap}
+.gen-btn:not(:disabled){background:#fff;color:#000;box-shadow:0 4px 0 #aaa,0 6px 12px rgba(0,0,0,.15)}
+.gen-btn:not(:disabled):hover{background:#f5f5f5;transform:translateY(1px);box-shadow:0 3px 0 #aaa,0 4px 8px rgba(0,0,0,.15)}
+.gen-btn:not(:disabled):active{transform:translateY(4px);box-shadow:none}
+.gen-btn:disabled{background:#1a1a1a;color:#555;cursor:not-allowed;border:1px solid #2a2a2a}
+.action-btn{flex:0 0 auto;padding:12px 14px;border:none;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;background:#2a2a2a;color:#ccc;transition:transform .1s,box-shadow .1s;letter-spacing:-.3px;white-space:nowrap;box-shadow:0 4px 0 #111,0 6px 12px rgba(0,0,0,.3)}
+.action-btn:hover{background:#333;color:#fff;transform:translateY(1px);box-shadow:0 3px 0 #111,0 4px 8px rgba(0,0,0,.3)}
+.action-btn:active{transform:translateY(4px);box-shadow:none}
+.action-btn.drv-btn{background:#1d4ed8;color:#fff;box-shadow:0 4px 0 #1239a0,0 6px 12px rgba(29,78,216,.4)}
+.action-btn.drv-btn:hover{background:#2563eb;box-shadow:0 3px 0 #1239a0,0 4px 8px rgba(29,78,216,.4)}
+.action-btn.mst-btn{background:#15803d;color:#fff;box-shadow:0 4px 0 #0d5c2c,0 6px 12px rgba(21,128,61,.4)}
+.action-btn.mst-btn:hover{background:#16a34a;box-shadow:0 3px 0 #0d5c2c,0 4px 8px rgba(21,128,61,.4)}
+.action-btn.share-act-btn{background:#0369a1;color:#fff;box-shadow:0 4px 0 #024e79,0 6px 12px rgba(3,105,161,.4)}
+.action-btn.share-act-btn:hover{background:#0284c7;box-shadow:0 3px 0 #024e79,0 4px 8px rgba(3,105,161,.4)}
 /* RESULTS */
 .sum-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:8px;margin-bottom:16px}
 .sc{padding:8px 12px;border-radius:12px;color:#fff;cursor:pointer;transition:transform .12s,box-shadow .12s;display:flex;flex-direction:column}
@@ -90,7 +98,7 @@ input[type=file]{display:none}
 .tab-btn{padding:9px 16px;border:1px solid #2e2e2e;border-bottom:none;border-radius:10px 10px 0 0;cursor:pointer;font-size:13px;font-weight:700;background:#181818;color:#999;transition:.12s;white-space:nowrap;flex-shrink:0}
 .tab-btn:hover{color:#ddd;background:#222}
 .tab-btn.active{color:#fff;border-color:#666;margin-bottom:-1px;z-index:1;position:relative}
-.tab-panel{background:#fff;border:1px solid #d1d5db;border-radius:0 10px 10px 10px;padding:0;margin-bottom:16px;display:none;overflow:clip}
+.tab-panel{background:#fff;border:1px solid #d1d5db;border-radius:0 10px 10px 10px;padding:0;margin-bottom:16px;display:none}
 .tab-panel.active{display:block}
 /* TABLE */
 .ptbl{width:100%;border-collapse:separate;border-spacing:0;font-size:15px}
@@ -425,9 +433,9 @@ button:not(:disabled):active{transform:scale(0.95)!important;transition:transfor
 <!-- MAIN ACTION BAR -->
 <div class="main-actions" id="main-actions">
   <button class="gen-btn" id="gen-btn" disabled onclick="generate()">🗺 배송플랜 생성</button>
-  <button class="action-btn" onclick="openModal('drv-modal')">⚙️ 기사정보변경</button>
-  <button class="action-btn" onclick="openMasterModal()">📋 거래처목록</button>
-  <button class="action-btn share-act-btn" onclick="shareLink()" style="background:#0369a1;color:#fff;border-color:#0369a1">📱 공유</button>
+  <button class="action-btn drv-btn" onclick="openModal('drv-modal')">⚙️ 기사정보변경</button>
+  <button class="action-btn mst-btn" onclick="openMasterModal()">📋 거래처목록</button>
+  <button class="action-btn share-act-btn" onclick="shareLink()">📱 공유</button>
   <div class="main-search">
     <input type="text" id="search-inp" class="search-inp" placeholder="🔍  거래처명 / 품목명 검색..."
       oninput="if(!searchComposing)filterSearch()"
@@ -1881,8 +1889,10 @@ function renderResults(cfg){
   totalDiv.className = 'sc ctotal';
   totalDiv.innerHTML = `
     <div class="drv">전체</div>
-    <div class="zns">수량 합계 : ${totalQtyStr}</div>
-    <div class="big">${totalCusts}</div>`;
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:4px;margin-top:2px">
+      <div class="zns" style="margin-top:0">수량 합계 : ${totalQtyStr}</div>
+      <div class="big" style="flex-shrink:0">${totalCusts}</div>
+    </div>`;
   totalDiv.onclick = () => { document.querySelector('.tab-btn[data-panel="tab_all"]')?.click(); $('tabs').scrollIntoView({behavior:'smooth',block:'start'}); };
   sg.appendChild(totalDiv);
 
@@ -1908,7 +1918,10 @@ function renderResults(cfg){
   if (secondaryPlan.length) {
     const div2 = document.createElement('div');
     div2.className = 'sc c2nd';
-    div2.innerHTML = `<div class="drv">2차</div><div class="big">${secondaryPlan.length}</div>`;
+    div2.innerHTML = `<div class="drv">2차</div>
+      <div style="display:flex;justify-content:flex-end;align-items:flex-start;margin-top:2px">
+        <div class="big" style="flex-shrink:0">${secondaryPlan.length}</div>
+      </div>`;
     div2.onclick = () => { document.querySelector('.tab-btn[data-panel="tab_secondary"]')?.click(); $('tabs').scrollIntoView({behavior:'smooth',block:'start'}); };
     sg.appendChild(div2);
   }
@@ -1916,7 +1929,10 @@ function renderResults(cfg){
     const cntS = new Set(specialPlan.map(o=>o.거래처명)).size;
     const divS = document.createElement('div');
     divS.className = 'sc cspecial';
-    divS.innerHTML = `<div class="drv">능동미나리</div><div class="big">${cntS}</div>`;
+    divS.innerHTML = `<div class="drv">능동미나리</div>
+      <div style="display:flex;justify-content:flex-end;align-items:flex-start;margin-top:2px">
+        <div class="big" style="flex-shrink:0">${cntS}</div>
+      </div>`;
     divS.onclick = () => { document.querySelector('.tab-btn[data-panel="tab_special_nari"]')?.click(); $('tabs').scrollIntoView({behavior:'smooth',block:'start'}); };
     sg.appendChild(divS);
   }

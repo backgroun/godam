@@ -440,8 +440,6 @@ button:not(:disabled):active{transform:scale(0.95)!important;transition:transfor
   <div class="sum-grid" id="sum-grid"></div>
   <div class="actions">
     <button class="abtn share-act-btn" onclick="shareLink()" style="background:#0369a1;color:#fff">📱 공유</button>
-    <button class="abtn print-btn" onclick="dlPrintHTML()">🖨 탭별인쇄</button>
-    <button class="abtn dl-btn" onclick="dlExcel()">📊 탭별엑셀</button>
     <button class="abtn reset-btn" onclick="resetAssignments()">🔄 리셋</button>
   </div>
   <div class="tabs" id="tabs"></div>
@@ -1111,11 +1109,15 @@ function genFilterBar(rows, filteredRows, tid, isAll, showDrv) {
     ? `<span class="flt-badge">${filteredRows.length}/${rows.length}건</span>` : '';
   const addrBtn = `<button class="filter-chip addr-toggle-btn${addrHidden?' flt-active':''}" onclick="toggleAddressCol()">${addrHidden?'주소 보기':'주소 숨기기'}</button>`;
   const isAllTab = (tid === 'tab_all');
-  const mapLabel = isAllTab ? '🗺 전체지도' : '🗺 지도';
-  const capLabel = isAllTab ? '📷 전체캡쳐' : '📷 캡쳐';
-  const mapBtn = `<button class="filter-chip" onclick="openTabMap('${tid}')">${mapLabel}</button>`;
-  const capBtn = `<button class="filter-chip" onclick="openTabCapture('${tid}')">${capLabel}</button>`;
-  return `<div class="filter-bar">${chips}${reset}${badge}${addrBtn}${mapBtn}${capBtn}</div>`;
+  const mapLabel   = isAllTab ? '🗺 전체지도'   : '🗺 지도';
+  const capLabel   = isAllTab ? '📷 전체캡쳐'   : '📷 캡쳐';
+  const printLabel = isAllTab ? '🖨 전체인쇄'   : '🖨 탭별인쇄';
+  const xlsLabel   = isAllTab ? '📊 전체엑셀'   : '📊 탭별엑셀';
+  const mapBtn   = `<button class="filter-chip" onclick="openTabMap('${tid}')">${mapLabel}</button>`;
+  const capBtn   = `<button class="filter-chip" onclick="openTabCapture('${tid}')">${capLabel}</button>`;
+  const printBtn = `<button class="filter-chip" onclick="dlPrintHTML()">${printLabel}</button>`;
+  const xlsBtn   = `<button class="filter-chip" onclick="dlExcel()">${xlsLabel}</button>`;
+  return `<div class="filter-bar">${chips}${reset}${badge}${addrBtn}${mapBtn}${capBtn}${printBtn}${xlsBtn}</div>`;
 }
 function openFilterPopup(tid, col, evt) {
   evt.stopPropagation();

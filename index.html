@@ -148,7 +148,8 @@ input[type=file]{display:none}
 .tab-panel .ptbl tbody tr:hover{filter:brightness(.93)}
 .tab-panel .note{color:#666}
 /* FILTER BAR */
-.filter-bar{display:flex;align-items:center;gap:6px;padding:8px 12px;border-bottom:1px solid #e5e7eb;background:#f9fafb;flex-wrap:wrap}
+.filter-bar{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid #e5e7eb;background:#f9fafb;flex-wrap:wrap}
+.fg{display:flex;gap:4px;align-items:center;background:#e4e7eb;padding:3px 5px;border-radius:10px}
 .filter-chip{display:inline-flex;align-items:center;gap:3px;padding:4px 10px;border:1px solid #d1d5db;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:#374151;white-space:nowrap;transition:.15s;line-height:1.4}
 .filter-chip:hover{background:#f3f4f6;border-color:#9ca3af}
 .filter-chip.flt-active{background:#3b82f6;color:#fff;border-color:#3b82f6}
@@ -1123,10 +1124,9 @@ function genFilterBar(rows, filteredRows, tid, isAll, showDrv) {
   const capBtn   = `<button class="filter-chip" onclick="openTabCapture('${tid}')">${capLabel}</button>`;
   const printBtn = `<button class="filter-chip" onclick="dlPrintHTML()">${printLabel}</button>`;
   const xlsBtn   = `<button class="filter-chip" onclick="dlExcel()">${xlsLabel}</button>`;
-  const sep = `<span style="width:1px;height:20px;background:#d1d5db;flex-shrink:0;align-self:center"></span>`;
   const resetBtnHtml = isAllTab ? `<button class="filter-chip" style="background:#dc2626;color:#fff;border-color:#dc2626" onclick="resetAssignments()">🔄 리셋</button>` : '';
-  const rightBtns = `<div style="display:flex;gap:6px;margin-left:auto">${addrBtn}${resetBtnHtml}</div>`;
-  return `<div class="filter-bar">${chips}${reset}${badge}${sep}${mapBtn}${capBtn}${sep}${printBtn}${xlsBtn}${rightBtns}</div>`;
+  const rightBtns = `<div class="fg" style="margin-left:auto">${addrBtn}${resetBtnHtml}</div>`;
+  return `<div class="filter-bar"><div class="fg">${chips}${reset}${badge}</div><div class="fg">${mapBtn}${capBtn}</div><div class="fg">${printBtn}${xlsBtn}</div>${rightBtns}</div>`;
 }
 function openFilterPopup(tid, col, evt) {
   evt.stopPropagation();

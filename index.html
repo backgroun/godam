@@ -74,15 +74,16 @@ input[type=file]{display:none}
 .action-btn:hover{background:#262626;color:#fff;border-color:#555}
 /* RESULTS */
 .sum-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:8px;margin-bottom:16px}
-.sc{padding:14px 16px;border-radius:14px;color:#fff;cursor:default;transition:transform .12s,box-shadow .12s;display:flex;flex-direction:column}
+.sc{padding:8px 12px;border-radius:12px;color:#fff;cursor:default;transition:transform .12s,box-shadow .12s;display:flex;flex-direction:column}
 .sc:hover{transform:translateY(-2px);box-shadow:0 8px 22px rgba(0,0,0,.5)}
 .sc-btns{display:flex;gap:6px;margin-top:auto;padding-top:10px}
 .share-btn{background:rgba(255,255,255,.22);border:none;border-radius:8px;padding:10px 8px;cursor:pointer;font-size:14px;line-height:1;color:#fff;transition:.12s;-webkit-tap-highlight-color:transparent;display:inline-flex;align-items:center;justify-content:center;gap:5px;flex:1;min-height:44px;font-weight:700;user-select:none;pointer-events:all;white-space:nowrap}
 .share-btn:hover{background:rgba(255,255,255,.38)}
 .share-btn:active{transform:scale(0.96)}
-.sc .drv{font-size:12px;font-weight:700;opacity:.9;margin-bottom:4px}
-.sc .big{font-size:30px;font-weight:900;line-height:1}
-.sc .zns{font-size:11px;opacity:.85;margin-top:7px;line-height:1.6}
+.sc .drv{font-size:12px;font-weight:700;opacity:.9;margin-bottom:2px}
+.sc .big{font-size:22px;font-weight:900;line-height:1}
+.sc .zns{font-size:11px;opacity:.85;margin-top:4px;line-height:1.5}
+.sc .qty{font-size:11px;opacity:.75;margin-top:3px;line-height:1.4}
 /* TABS */
 .tabs{display:flex;gap:3px;flex-wrap:nowrap;overflow-x:auto;margin-bottom:0;padding-bottom:1px;-webkit-overflow-scrolling:touch;position:sticky;top:0;z-index:50;background:#0d0d0d}
 .tabs::-webkit-scrollbar{height:0}
@@ -136,7 +137,7 @@ input[type=file]{display:none}
 .reset-btn{background:#7f1d1d;color:#fca5a5;border:1px solid #991b1b}
 .reset-btn:hover{background:#991b1b;color:#fff}
 /* driver bg colors */
-.c1{background:#c2410c}.c2{background:#15803d}.c3{background:#1e40af}.c4{background:#6d28d9}.c5{background:#9d174d}.cmiss{background:#7f1d1d}.cspecial{background:#0e7490}.c2nd{background:#78350f}.ctbae{background:#0369a1}
+.c1{background:#c2410c}.c2{background:#15803d}.c3{background:#1e40af}.c4{background:#6d28d9}.c5{background:#9d174d}.cmiss{background:#7f1d1d}.cspecial{background:#0e7490}.c2nd{background:#78350f}.ctbae{background:#0369a1}.ctotal{background:linear-gradient(135deg,#334155,#1e293b)}
 /* TAB-PANEL 공통 화이트 테마 */
 .tab-panel .ptbl th{background:#f3f4f6;color:#111;padding:6px 10px;border-bottom:2px solid #d1d5db;border-right:1px solid #d1d5db}
 .tab-panel .ptbl td{color:#111;padding:6px 10px;border-right:1px solid #e5e7eb}
@@ -1955,6 +1956,22 @@ function renderResults(cfg){
   $('search-inp').value = '';
 
   const allDrvs = [...new Set([...cfg.map(d=>d.name), '택배', '미배정'])];
+
+  // 전체 통합 박스
+  const allItems = [...plan, ...specialPlan, ...secondaryPlan];
+  const totalCusts = new Set(allItems.map(o=>o.거래처명)).size;
+  const totalQty = allItems.reduce((s,o)=>s+(parseFloat(o.수량)||0),0);
+  const totalQtyStr = totalQty%1===0 ? String(Math.round(totalQty)) : totalQty.toFixed(1);
+  const activeDrvCnt = allDrvs.filter(d=>allItems.some(o=>o.담당기사===d)).length;
+  const allZones = [...new Set(allItems.map(o=>o.구역).filter(Boolean))];
+  const totalDiv = document.createElement('div');
+  totalDiv.className = 'sc ctotal';
+  totalDiv.innerHTML = `
+    <div class="drv">전체</div>
+    <div class="big">${totalCusts}<span style="font-size:13px;font-weight:600;opacity:.75"> 거래처</span></div>
+    <div class="zns">${activeDrvCnt}명 기사</div>
+    <div class="qty">수량 합계 ${totalQtyStr}</div>`;
+  sg.appendChild(totalDiv);
 
   allDrvs.forEach((drv,i) => {
     const sub = plan.filter(o=>o.담당기사===drv);

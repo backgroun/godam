@@ -8,9 +8,11 @@
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Apple SD Gothic Neo','맑은 고딕',sans-serif;background:#0d0d0d;min-height:100vh;color:#e5e5e5;line-height:1.5}
 .wrap{max-width:1240px;margin:0 auto;padding:32px 24px 80px}
-.hdr{text-align:center;margin-bottom:32px}
-.hdr h1{font-size:30px;font-weight:900;color:#fff;letter-spacing:-.5px}
-.hdr .sub{font-size:14px;color:#888;margin-top:8px}
+.hdr{text-align:left;margin-bottom:0}
+.hdr h1{font-size:30px;font-weight:900;color:#fff;letter-spacing:-.5px;white-space:nowrap}
+.hdr .sub{font-size:13px;color:#ef4444;margin-top:6px;font-weight:600}
+.top-bar{display:flex;align-items:center;gap:20px;margin-bottom:20px}
+.top-bar .upload-card{flex:1;min-width:0;margin-bottom:0}
 .card{background:#181818;border-radius:16px;padding:20px 24px;border:1px solid #2e2e2e;margin-bottom:16px;box-shadow:0 2px 16px rgba(0,0,0,.6)}
 /* UPLOAD */
 .uprow{display:grid;grid-template-columns:1fr 48px 1fr;align-items:center;gap:8px}
@@ -271,9 +273,10 @@ button:not(:disabled):active{transform:scale(0.95)!important;transition:transfor
   <button class="mob-nav-btn active" id="mob-btn-list" onclick="mobSwitch('list')">🚚 배송리스트</button>
 </div>
 
+<div class="top-bar">
 <div class="hdr">
   <h1>고담 배송플랜 자동화</h1>
-  <p class="sub" id="sub-msg">거래처 마스터 + 발주 파일 업로드 → 기사별 배송플랜 자동 생성</p>
+  <p class="sub" id="sub-msg" style="display:none"></p>
 </div>
 
 <!-- UPLOAD -->
@@ -336,6 +339,7 @@ button:not(:disabled):active{transform:scale(0.95)!important;transition:transfor
     </div>
     <input type="file" id="f-o" accept=".xlsx,.xls">
   </div>
+</div>
 </div>
 
 <!-- DRIVER SETTINGS MODAL -->
@@ -1549,7 +1553,7 @@ window.addEventListener('load', async () => {
   }
   // XLSX 로드 실패 시 업로드 기능만 비활성화 (캐시 뷰는 정상 동작)
   if (typeof XLSX === 'undefined') {
-    $('sub-msg').innerHTML = '⚠️ 라이브러리 로딩 실패 — 인터넷 연결 확인 후 새로고침하세요';
+    $('sub-msg').style.display = ''; $('sub-msg').innerHTML = '⚠️ 라이브러리 로딩 실패 — 인터넷 연결 확인 후 새로고침하세요';
   }
   initMobNav();
 });

@@ -1312,15 +1312,25 @@ function loadPlanFromStorage() {
 function saveDriverSettings() {
   const oldCfg = currentCfg;
   const cfg = getDriverCfg();
+  // 기존 기사가 새 cfg에서 사라진 경우 확인
+  if (oldCfg.length > 0) {
+    const removed = oldCfg.filter(d => !cfg.some(c => c.name === d.name)).map(d => d.name);
+    if (removed.length > 0) {
+      if (!confirm(`기사 정보에서 삭제됩니다: ${removed.join(', ')}\n\n해당 기사의 배정 건들이 미배정으로 이동됩니다. 계속하시겠습니까?`)) return;
+    }
+  }
   try { localStorage.setItem(LS_DRIVERS, JSON.stringify(cfg)); } catch(e) {}
   currentCfg = cfg;
   if (plan && plan.length) {
+    const cfgNames = new Set(cfg.map(d => d.name));
     [...plan, ...specialPlan, ...secondaryPlan].forEach(o => {
       if (o._manual) return;
       const oldDrv = getDriver(o.구역, oldCfg);
       const newDrv = getDriver(o.구역, cfg);
-      // 구역 소유권이 실제로 바뀐 경우만 재배정 (기사명 변경/구역 이동/신규 기사 추가)
-      if (oldDrv !== newDrv) o.담당기사 = newDrv;
+      if (oldDrv === newDrv) return;
+      // 미배정으로 이동 시 현재 기사가 cfg에 존재하면 유지 (실수 삭제 보호)
+      if (newDrv === '미배정' && cfgNames.has(o.담당기사)) return;
+      o.담당기사 = newDrv;
     });
     savePlan();
     const sy = window.scrollY;

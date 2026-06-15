@@ -90,11 +90,11 @@ input[type=file]{display:none}
 .tab-btn{padding:9px 16px;border:1px solid #2e2e2e;border-bottom:none;border-radius:10px 10px 0 0;cursor:pointer;font-size:13px;font-weight:700;background:#181818;color:#999;transition:.12s;white-space:nowrap;flex-shrink:0}
 .tab-btn:hover{color:#ddd;background:#222}
 .tab-btn.active{color:#fff;border-color:#666;margin-bottom:-1px;z-index:1;position:relative}
-.tab-panel{background:#fff;border:1px solid #d1d5db;border-radius:0 10px 10px 10px;padding:0;margin-bottom:16px;display:none;overflow:hidden}
+.tab-panel{background:#fff;border:1px solid #d1d5db;border-radius:0 10px 10px 10px;padding:0;margin-bottom:16px;display:none;overflow:clip}
 .tab-panel.active{display:block}
 /* TABLE */
 .ptbl{width:100%;border-collapse:separate;border-spacing:0;font-size:15px}
-.ptbl thead{position:sticky;top:86px;z-index:10}
+.ptbl thead{position:sticky;top:79px;z-index:10}
 .ptbl th{background:#141414;color:#e0e0e0;padding:11px 12px;font-weight:700;white-space:nowrap;text-align:left;border-bottom:2px solid #383838;border-right:1px solid #2e2e2e}
 .ptbl th:last-child{border-right:none}
 .ptbl td{padding:10px 11px;border-bottom:none;vertical-align:top;word-break:break-word;overflow-wrap:break-word;color:#d8d8d8;border-right:1px solid #2e2e2e}
@@ -145,7 +145,7 @@ input[type=file]{display:none}
 .tab-panel .ptbl tbody tr:hover{filter:brightness(.93)}
 .tab-panel .note{color:#666}
 /* FILTER BAR */
-.filter-bar{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid #e5e7eb;background:#f9fafb;flex-wrap:wrap;position:sticky;top:38px;z-index:40}
+.filter-bar{display:flex;align-items:center;gap:8px;padding:5px 12px;border-bottom:1px solid #e5e7eb;background:#f9fafb;flex-wrap:wrap;position:sticky;top:38px;z-index:40}
 .fg{display:flex;gap:4px;align-items:center;background:#e4e7eb;padding:3px 5px;border-radius:10px}
 .filter-chip{display:inline-flex;align-items:center;gap:3px;padding:4px 10px;border:1px solid #d1d5db;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:#374151;white-space:nowrap;transition:.15s;line-height:1.4}
 .filter-chip:hover{background:#f3f4f6;border-color:#9ca3af}

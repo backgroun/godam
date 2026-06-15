@@ -205,7 +205,13 @@ button:not(:disabled):active{transform:scale(0.95)!important;transition:transfor
 }
 /* MASTER LIST */
 #master-scroll{max-height:calc(75vh - 180px);overflow-y:auto;overflow-x:auto;border-radius:8px;border:1px solid #2e2e2e}
+#master-modal .ptbl thead{top:0}
 #master-modal .ptbl thead th{position:sticky;top:0;z-index:2;background:#141414}
+/* CHANGE HISTORY MODAL */
+#hist-modal .ptbl{border-collapse:collapse;width:100%}
+#hist-modal .ptbl th,#hist-modal .ptbl td{padding:8px 12px;border-bottom:1px solid #2e2e2e;font-size:13px}
+#hist-modal .ptbl thead th{position:sticky;top:0;background:#141414;color:#e0e0e0;z-index:2}
+#hist-modal .ptbl tbody tr:hover{background:#1e1e1e}
 .master-addr-cell{cursor:pointer}
 .master-addr-cell:hover{outline:1px dashed #22c55e;background:#0a1f12!important}
 /* PRINT */
@@ -408,6 +414,29 @@ button:not(:disabled):active{transform:scale(0.95)!important;transition:transfor
   </div>
 </div>
 
+<!-- CHANGE HISTORY MODAL -->
+<div class="modal-overlay" id="hist-modal" onclick="if(event.target===this)closeModal('hist-modal')">
+  <div class="modal" style="max-width:700px">
+    <div class="modal-hdr">📋 배정 변경내역<span id="hist-cnt-label" style="color:#666;font-weight:400;font-size:13px;margin-left:6px"></span>
+      <button class="modal-close" onclick="closeModal('hist-modal')">✕</button>
+    </div>
+    <div class="modal-body" style="padding:0">
+      <div id="hist-scroll" style="max-height:calc(75vh - 120px);overflow-y:auto">
+        <table class="ptbl" id="hist-tbl">
+          <thead><tr>
+            <th style="width:36px;text-align:center">#</th>
+            <th>거래처명</th>
+            <th>원래 배정</th>
+            <th>현재 배정</th>
+            <th style="width:36px"></th>
+          </tr></thead>
+          <tbody id="hist-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- MAP MODAL -->
 <div class="modal-overlay" id="map-modal" onclick="if(event.target===this)closeModal('map-modal')">
   <div class="modal" style="max-width:960px">
@@ -557,6 +586,8 @@ const DEFAULTS = [
 
 let masterLookup = null, orders = null, plan = null, specialPlan = [], secondaryPlan = [], dlDate = '', currentCfg = [];
 const tabMeta = new Map();
+let drvColorMap = {};
+function getDrvHex(drvName){ return drvColorMap[drvName] || null; }
 const tabFilters = {};
 let addrHidden = true, searchComposing = false;
 
@@ -657,7 +688,14 @@ function resetAssignments() {
 }
 
 function reassign(name, newDriver) {
-  [...plan, ...specialPlan, ...secondaryPlan].forEach(o => { if (o.거래처명 === name) { o.담당기사 = newDriver; o._manual = true; } });
+  [...plan, ...specialPlan, ...secondaryPlan].forEach(o => {
+    if (o.거래처명 !== name) return;
+    if (!o._manual) o._originalDrv = o.담당기사;
+    const isRevert = newDriver === (o._originalDrv || getDriver(o.구역, currentCfg));
+    o.담당기사 = newDriver;
+    if (isRevert) { o._manual = false; delete o._originalDrv; }
+    else o._manual = true;
+  });
   savePlan();
   const sy = window.scrollY;
   renderResults(currentCfg);
@@ -1130,8 +1168,9 @@ function genFilterBar(rows, filteredRows, tid, isAll, showDrv) {
   const capBtn   = `<button class="filter-chip" onclick="openTabCapture('${tid}')">${capLabel}</button>`;
   const printBtn = `<button class="filter-chip" onclick="dlPrintHTML()">${printLabel}</button>`;
   const xlsBtn   = `<button class="filter-chip" onclick="dlExcel()">${xlsLabel}</button>`;
+  const histBtnHtml = isAllTab ? `<button class="filter-chip" style="background:#2563eb;color:#fff;border-color:#2563eb" onclick="showChangeHistory()">📋 변경내역</button>` : '';
   const resetBtnHtml = isAllTab ? `<button class="filter-chip" style="background:#dc2626;color:#fff;border-color:#dc2626" onclick="resetAssignments()">🔄 리셋</button>` : '';
-  const rightBtns = `<div class="fg" style="margin-left:auto">${addrBtn}${resetBtnHtml}</div>`;
+  const rightBtns = `<div class="fg" style="margin-left:auto">${addrBtn}${histBtnHtml}${resetBtnHtml}</div>`;
   return `<div class="filter-bar"><div class="fg">${chips}${reset}${badge}</div><div class="fg">${mapBtn}${capBtn}</div><div class="fg">${printBtn}${xlsBtn}</div>${rightBtns}</div>`;
 }
 function openFilterPopup(tid, col, evt) {
@@ -1788,35 +1827,36 @@ function makePanelHTML(rows, showDrv, showReassign, showAddr = true, allowAddrAd
       const noteRaw = [item.비고1, item.비고2].filter(Boolean).join(' / ');
       const noteChunks = []; for (let _i=0;_i<noteRaw.length;_i+=20) noteChunks.push(h(noteRaw.slice(_i,_i+20)));
       const note = noteChunks.join('<br>');
-      const manualItalic = o._manual ? ';font-style:italic' : '';
-      const manualColor = o._manual ? ';color:#d97706' : '';
+      const origHex = o._manual ? (getDrvHex(o._originalDrv) || '#92400e') : null;
+      const manualBold = o._manual ? ';font-weight:700' : '';
+      const custManual = origHex ? `;color:${origHex};font-weight:700` : '';
+      const selStyle = origHex ? ` style="border:2px solid ${origHex};border-radius:6px;color:${origHex};font-weight:700"` : '';
       if (idx === 0) {
-        // 첫 번째 행: 모든 정보 표시. rowspan 없음 — 각 행이 독립적으로 전체 배경색 적용
         const drvShort = o.담당기사 ? o.담당기사.split(' ')[0] : '';
-        const drvCell = showDrv ? `<td class="mob-hide" style="${s};text-align:center;white-space:nowrap${manualItalic}">${h(drvShort)}</td>` : '';
+        const drvCell = showDrv ? `<td class="mob-hide" style="${s};text-align:center;white-space:nowrap${manualBold}">${h(drvShort)}</td>` : '';
         const raCell = showReassign
-          ? `<td class="mob-hide" style="${s};vertical-align:top;padding-top:10px"><select class="drv-sel" data-name="${h(o.거래처명)}" onchange="reassign(this.dataset.name,this.value)">${drvOpts}</select></td>`
+          ? `<td class="mob-hide" style="${s};vertical-align:top;padding-top:10px"><select class="drv-sel"${selStyle} data-name="${h(o.거래처명)}" onchange="reassign(this.dataset.name,this.value)">${drvOpts}</select></td>`
           : '';
         const addrCell = showAddr ? (o.배송주소
-          ? `<td class="mob-hide addr-edit" style="${s}" data-name="${h(o.거래처명)}" data-addr="${h(o.배송주소)}" onclick="startEditAddr(this)">${h(o.배송주소)}</td>`
+          ? `<td class="mob-hide addr-edit" style="${s}${manualBold}" data-name="${h(o.거래처명)}" data-addr="${h(o.배송주소)}" onclick="startEditAddr(this)">${h(o.배송주소)}</td>`
           : allowAddrAdd
             ? `<td class="mob-hide" style="${s}" data-name="${h(o.거래처명)}" onclick="openAddrSearch(this)"><span class="no-addr">+ 주소 검색</span></td>`
             : `<td class="mob-hide" style="${s}"></td>`
         ) : '';
         return `<tr${cls}>
           <td style="${s};text-align:center;color:#888;white-space:nowrap;min-width:32px">${seq}</td>
-          <td class="mob-hide" style="${s}"><span class="zchip" style="${ZONE_STYLE[o.구역]||ZONE_STYLE['기타']}">${h(o.구역)}</span></td>
-          <td class="cust" style="${s}${manualItalic}${manualColor}">${custDisplay(o.거래처명)}</td>
-          <td style="${s};word-break:break-all">${itemDisplay(item.품목명)}</td>
-          <td style="${s};text-align:center;white-space:nowrap">${h(item.수량)}</td>
-          <td style="${s};text-align:center;white-space:nowrap">${h(item.구분)}</td>
-          <td class="note${noteHide}" style="${s};white-space:nowrap">${note}</td>
+          <td class="mob-hide" style="${s}${manualBold}"><span class="zchip" style="${ZONE_STYLE[o.구역]||ZONE_STYLE['기타']}">${h(o.구역)}</span></td>
+          <td class="cust" style="${s}${custManual}">${custDisplay(o.거래처명)}</td>
+          <td style="${s}${manualBold};word-break:break-all">${itemDisplay(item.품목명)}</td>
+          <td style="${s}${manualBold};text-align:center;white-space:nowrap">${h(item.수량)}</td>
+          <td style="${s}${manualBold};text-align:center;white-space:nowrap">${h(item.구분)}</td>
+          <td class="note${noteHide}" style="${s}${manualBold};white-space:nowrap">${note}</td>
           ${drvCell}
           ${raCell}
           ${addrCell}
         </tr>`;
       }
-      // 2번째 행부터: 구역/기사/거래처명/배정변경/주소 칸은 비우되 동일 배경색 적용
+      // 2번째 행부터
       const drvCell = showDrv ? `<td class="mob-hide" style="${s}"></td>` : '';
       const raCell = showReassign ? `<td class="mob-hide" style="${s}"></td>` : '';
       const addrCell = showAddr ? `<td class="mob-hide" style="${s}"></td>` : '';
@@ -1824,10 +1864,10 @@ function makePanelHTML(rows, showDrv, showReassign, showAddr = true, allowAddrAd
           <td style="${s}"></td>
           <td class="mob-hide" style="${s}"></td>
           <td style="${s}"></td>
-          <td style="${s};word-break:break-all">${itemDisplay(item.품목명)}</td>
-          <td style="${s};text-align:center;white-space:nowrap">${h(item.수량)}</td>
-          <td style="${s};text-align:center;white-space:nowrap">${h(item.구분)}</td>
-          <td class="note${noteHide}" style="${s};white-space:nowrap">${note}</td>
+          <td style="${s}${manualBold};word-break:break-all">${itemDisplay(item.품목명)}</td>
+          <td style="${s}${manualBold};text-align:center;white-space:nowrap">${h(item.수량)}</td>
+          <td style="${s}${manualBold};text-align:center;white-space:nowrap">${h(item.구분)}</td>
+          <td class="note${noteHide}" style="${s}${manualBold};white-space:nowrap">${note}</td>
           ${drvCell}
           ${raCell}
           ${addrCell}
@@ -1881,6 +1921,11 @@ function renderResults(cfg){
   $('search-inp').value = '';
 
   const allDrvs = [...new Set([...cfg.map(d=>d.name), '택배', '미배정'])];
+  drvColorMap = {};
+  allDrvs.forEach((drv,i) => {
+    const key = drv==='미배정' ? 'cmiss' : drv==='택배' ? 'ctbae' : (DRV_CLR[i]||'c1');
+    drvColorMap[drv] = DRV_HEX_PALETTE[key] || '#374151';
+  });
 
   // 전체 통합 박스
   const allItems = [...plan, ...specialPlan, ...secondaryPlan];
@@ -2191,18 +2236,45 @@ function showToast(msg, color='#22c55e') {
   setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 200); }, 2500);
 }
 
+// ── 배정 변경내역 ──────────────────────────────────────
+function showChangeHistory() {
+  const all = [...plan, ...specialPlan, ...secondaryPlan];
+  const seen = new Set();
+  const items = [];
+  all.forEach(o => { if (o._manual && !seen.has(o.거래처명)) { seen.add(o.거래처명); items.push(o); } });
+  const tbody = $('hist-tbody');
+  $('hist-cnt-label').textContent = items.length ? `(${items.length}건)` : '';
+  if (!items.length) { showToast('변경된 배정이 없습니다.'); return; }
+  tbody.innerHTML = items.map((o, i) => {
+    const origHex = getDrvHex(o._originalDrv) || '#888';
+    const nowHex  = getDrvHex(o.담당기사) || '#888';
+    const origName = o._originalDrv || '-';
+    return `<tr>
+      <td style="text-align:center;color:#666">${i+1}</td>
+      <td style="font-weight:700">${h(o.거래처명)}</td>
+      <td><span style="color:${origHex};font-weight:700">${h(stripTitle(origName))}</span></td>
+      <td><span style="color:${nowHex};font-weight:700">→ ${h(stripTitle(o.담당기사))}</span></td>
+      <td style="text-align:center"><span style="cursor:pointer;color:#ef4444;font-size:15px" onclick="reassign('${h(o.거래처명)}','${h(o._originalDrv||getDriver(o.구역,currentCfg))}');closeModal('hist-modal')">↩</span></td>
+    </tr>`;
+  }).join('');
+  openModal('hist-modal');
+}
+
 // ── 버튼 클릭음 (Web Audio API) ─────────────────────────
 let _audioCtx = null;
 function playClick() {
   try {
     if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    const osc = _audioCtx.createOscillator();
-    const gain = _audioCtx.createGain();
-    osc.connect(gain); gain.connect(_audioCtx.destination);
-    osc.frequency.value = 700;
-    gain.gain.setValueAtTime(0.08, _audioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, _audioCtx.currentTime + 0.07);
-    osc.start(_audioCtx.currentTime); osc.stop(_audioCtx.currentTime + 0.07);
+    const o = _audioCtx.createOscillator();
+    const g = _audioCtx.createGain();
+    o.connect(g); g.connect(_audioCtx.destination);
+    o.type = 'sine';
+    o.frequency.setValueAtTime(1047, _audioCtx.currentTime);
+    o.frequency.exponentialRampToValueAtTime(784, _audioCtx.currentTime + 0.06);
+    g.gain.setValueAtTime(0.04, _audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.0001, _audioCtx.currentTime + 0.11);
+    o.start(_audioCtx.currentTime);
+    o.stop(_audioCtx.currentTime + 0.11);
   } catch(e) {}
 }
 document.addEventListener('click', e => {

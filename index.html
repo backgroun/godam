@@ -1550,6 +1550,8 @@ window.addEventListener('load', async () => {
     specialPlan = sourceData.specialPlan || [];
     secondaryPlan = sourceData.secondaryPlan || [];
     currentCfg = sourceData.currentCfg || [];
+    // 플랜에 cfg가 없으면 LS_DRIVERS에서 복원
+    if (currentCfg.length === 0) currentCfg = loadDriversFromStorage() || [];
     dlDate = sourceData.dlDate || dlDate;
     if (sharedPlan) { savePlan(); showToast('📱 공유 플랜이 로드됐습니다.'); }
     renderResults(currentCfg);

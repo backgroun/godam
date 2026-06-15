@@ -524,7 +524,7 @@ function chunkStr(str, size) {
   return chunks.join('<br>');
 }
 function custDisplay(name) { return chunkStr(name, 15); }
-function itemDisplay(name) { return chunkStr(name, 15); }
+function itemDisplay(name) { return chunkStr(name, 20); }
 
 function getDrvHex(drv) {
   const allDrvs = [...currentCfg.map(d=>d.name), '택배', '미배정'];
@@ -631,7 +631,7 @@ function openOrderPicker() {
 }
 
 function reassign(name, newDriver) {
-  plan.forEach(o => { if (o.거래처명 === name) { o.담당기사 = newDriver; o._manual = true; } });
+  [...plan, ...specialPlan, ...secondaryPlan].forEach(o => { if (o.거래처명 === name) { o.담당기사 = newDriver; o._manual = true; } });
   savePlan();
   const sy = window.scrollY;
   renderResults(currentCfg);
@@ -1180,10 +1180,19 @@ function loadPlanFromStorage() {
 }
 
 function saveDriverSettings() {
+  const oldCfg = currentCfg;
   const cfg = getDriverCfg();
   try { localStorage.setItem(LS_DRIVERS, JSON.stringify(cfg)); } catch(e) {}
   currentCfg = cfg;
   if (plan && plan.length) {
+    // 신규 기사의 구역에 있는 _manual 아이템 초기화 (신규 기사가 배정받을 수 있도록)
+    const oldNames = new Set(oldCfg.map(d=>d.name));
+    const newZones = new Set(cfg.filter(d=>!oldNames.has(d.name)).flatMap(d=>d.zones));
+    if (newZones.size > 0) {
+      [...plan, ...specialPlan, ...secondaryPlan].forEach(o => {
+        if (newZones.has(o.구역)) o._manual = false;
+      });
+    }
     [...plan, ...specialPlan, ...secondaryPlan].forEach(o => {
       if (!o._manual) o.담당기사 = getDriver(o.구역, cfg);
     });
@@ -1747,7 +1756,7 @@ function makePanelHTML(rows, showDrv, showReassign, showAddr = true, allowAddrAd
   const raTh = showReassign ? `<th class="mob-hide" style="width:90px;min-width:90px">배정변경</th>` : '';
   const addrTh = showAddr ? `<th class="mob-hide">배송주소</th>` : '';
   const noteHide = isAll ? '' : ' mob-hide';
-  const hdr = `<th style="min-width:32px;text-align:center">#</th><th class="mob-hide">구역</th>${drvTh}<th>거래처명</th><th>품목명</th><th style="min-width:48px;text-align:center">수량</th><th style="min-width:60px;text-align:center">구분</th><th class="note${noteHide}" style="min-width:200px">비고</th>${raTh}${addrTh}`;
+  const hdr = `<th style="min-width:32px;text-align:center">#</th><th class="mob-hide">구역</th><th>거래처명</th><th>품목명</th><th style="min-width:48px;text-align:center">수량</th><th style="min-width:60px;text-align:center">구분</th><th class="note${noteHide}">비고</th>${drvTh}${raTh}${addrTh}`;
   let seq = 0;
   const body = groups.map(({ meta: o, items }) => {
     seq++;
@@ -1771,7 +1780,7 @@ function makePanelHTML(rows, showDrv, showReassign, showAddr = true, allowAddrAd
       if (idx === 0) {
         // 첫 번째 행: 모든 정보 표시. rowspan 없음 — 각 행이 독립적으로 전체 배경색 적용
         const drvShort = o.담당기사 ? o.담당기사.split(' ')[0] : '';
-        const drvCell = showDrv ? `<td class="mob-hide" style="${s};text-align:center${manualItalic}">${h(drvShort)}</td>` : '';
+        const drvCell = showDrv ? `<td class="mob-hide" style="${s};text-align:center;white-space:nowrap${manualItalic}">${h(drvShort)}</td>` : '';
         const raCell = showReassign
           ? `<td class="mob-hide" style="${s};vertical-align:top;padding-top:10px"><select class="drv-sel" data-name="${h(o.거래처명)}" onchange="reassign(this.dataset.name,this.value)">${drvOpts}</select></td>`
           : '';
@@ -1784,12 +1793,12 @@ function makePanelHTML(rows, showDrv, showReassign, showAddr = true, allowAddrAd
         return `<tr${cls}>
           <td style="${s};text-align:center;color:#888;white-space:nowrap;min-width:32px">${seq}</td>
           <td class="mob-hide" style="${s}"><span class="zchip" style="${ZONE_STYLE[o.구역]||ZONE_STYLE['기타']}">${h(o.구역)}</span></td>
-          ${drvCell}
           <td class="cust" style="${s}${manualItalic}${manualColor}">${custDisplay(o.거래처명)}</td>
           <td style="${s}">${itemDisplay(item.품목명)}</td>
           <td style="${s};text-align:center;white-space:nowrap">${h(item.수량)}</td>
           <td style="${s};text-align:center;white-space:nowrap">${h(item.구분)}</td>
           <td class="note${noteHide}" style="${s};white-space:nowrap">${note}</td>
+          ${drvCell}
           ${raCell}
           ${addrCell}
         </tr>`;
@@ -1801,12 +1810,12 @@ function makePanelHTML(rows, showDrv, showReassign, showAddr = true, allowAddrAd
       return `<tr${cls}>
           <td style="${s}"></td>
           <td class="mob-hide" style="${s}"></td>
-          ${drvCell}
           <td style="${s}"></td>
           <td style="${s}">${itemDisplay(item.품목명)}</td>
           <td style="${s};text-align:center;white-space:nowrap">${h(item.수량)}</td>
           <td style="${s};text-align:center;white-space:nowrap">${h(item.구분)}</td>
           <td class="note${noteHide}" style="${s};white-space:nowrap">${note}</td>
+          ${drvCell}
           ${raCell}
           ${addrCell}
         </tr>`;

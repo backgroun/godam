@@ -89,7 +89,7 @@ input[type=file]{display:none}
 .tabs::-webkit-scrollbar{height:0}
 .tab-btn{padding:9px 16px;border:1px solid #2e2e2e;border-bottom:none;border-radius:10px 10px 0 0;cursor:pointer;font-size:13px;font-weight:700;background:#181818;color:#999;transition:.12s;white-space:nowrap;flex-shrink:0}
 .tab-btn:hover{color:#ddd;background:#222}
-.tab-btn.active{background:#0d0d0d;color:#fff;border-color:#666;margin-bottom:-1px;z-index:1;position:relative}
+.tab-btn.active{color:#fff;border-color:#666;margin-bottom:-1px;z-index:1;position:relative}
 .tab-panel{background:#fff;border:1px solid #d1d5db;border-radius:0 10px 10px 10px;padding:0;margin-bottom:16px;display:none;overflow:hidden}
 .tab-panel.active{display:block;overflow-y:auto;max-height:calc(100vh - 54px)}
 /* TABLE */
@@ -2021,8 +2021,9 @@ function renderResults(cfg){
     const btnAll = document.createElement('button');
     btnAll.className = 'tab-btn active';
     btnAll.dataset.panel = 'tab_all';
+    btnAll.dataset.activeBg = '#374151';
     btnAll.textContent = `전체 (${new Set(fullList.map(o=>o.거래처명)).size})`;
-    btnAll.style.borderBottomColor = '#374151';
+    btnAll.style.background = '#374151';
     btnAll.onclick = () => {
       document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
       document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
@@ -2050,6 +2051,8 @@ function renderResults(cfg){
     btn.className = 'tab-btn';
     btn.dataset.panel = sid;
     btn.textContent = `${stripTitle(drv)} (${cnt})`;
+    const clrKey = drv==='미배정' ? 'cmiss' : drv==='택배' ? 'ctbae' : (DRV_CLR[allDrvs.indexOf(drv)]||'c1');
+    btn.dataset.activeBg = DRV_HEX_PALETTE[clrKey] || '#374151';
     btn.onclick = () => {
       document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
       document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
@@ -2074,7 +2077,7 @@ function renderResults(cfg){
     btn2.className = 'tab-btn';
     btn2.dataset.panel = 'tab_secondary';
     btn2.textContent = `2차 (${secondaryPlan.length})`;
-    btn2.style.borderBottomColor = '#b45309';
+    btn2.dataset.activeBg = '#b45309';
     btn2.onclick = () => {
       document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
       document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
@@ -2098,7 +2101,7 @@ function renderResults(cfg){
     btn.className = 'tab-btn';
     btn.dataset.panel = 'tab_special_nari';
     btn.textContent = `능동미나리 (${specialPlan.length})`;
-    btn.style.borderBottomColor = '#0891b2';
+    btn.dataset.activeBg = '#0891b2';
     btn.onclick = () => {
       document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
       document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
@@ -2115,6 +2118,13 @@ function renderResults(cfg){
     tabMeta.set('tab_special_nari', { rows: sorted, showDrv: false, showReassign: false, allowAddrAdd: true });
     tp.appendChild(panel);
   }
+  tabs.addEventListener('click', e => {
+    const clicked = e.target.closest('.tab-btn');
+    if (!clicked) return;
+    document.querySelectorAll('.tab-btn').forEach(b => { b.style.background = ''; });
+    if (clicked.dataset.activeBg) clicked.style.background = clicked.dataset.activeBg;
+  });
+
   renderStats();
 }
 

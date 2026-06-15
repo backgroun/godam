@@ -1859,16 +1859,16 @@ function makePanelHTML(rows, showDrv, showReassign, showAddr = true, allowAddrAd
       const isLast = idx === n - 1;
       const cls = n > 1 ? (isLast ? ' class="grp-last"' : ' class="grp-inner"') : '';
       // 각 행의 배경/폰트는 해당 item 기준으로 결정
-      const origHex = o._manual ? (getDrvHex(o._originalDrv) || '#92400e') : null;
-      const iBg = origHex ? `${origHex}28` : (item._bg ? item._bg : stripe);
-      const iText = item._font || (item._bg && !origHex ? autoTextColor(item._bg) : '#111111');
+      const iBg = item._bg ? item._bg : stripe;
+      const iText = item._font || (item._bg ? autoTextColor(item._bg) : '#111111');
       const s = `background:${iBg}${iText ? `;color:${iText}` : ''}`;
       const noteRaw = [item.비고1, item.비고2].filter(Boolean).join(' / ');
       const noteChunks = []; for (let _i=0;_i<noteRaw.length;_i+=20) noteChunks.push(h(noteRaw.slice(_i,_i+20)));
       const note = noteChunks.join('<br>');
+      const origHex = o._manual ? (getDrvHex(o._originalDrv) || '#92400e') : null;
       const manualBold = o._manual ? ';font-weight:700' : '';
-      const custManual = origHex ? ';font-weight:700' : '';
-      const selStyle = origHex ? ` style="border:2px solid ${origHex};border-radius:6px;color:${origHex};font-weight:700"` : '';
+      const custManual = origHex ? `;color:${origHex};font-weight:700` : '';
+      const selStyle = origHex ? ` style="background:${origHex};border:2px solid ${origHex};border-radius:6px;color:#fff;font-weight:700"` : '';
       if (idx === 0) {
         const drvShort = o.담당기사 ? o.담당기사.split(' ')[0] : '';
         const drvCell = showDrv ? `<td class="mob-hide" style="${s};text-align:center;white-space:nowrap${manualBold}">${h(drvShort)}</td>` : '';

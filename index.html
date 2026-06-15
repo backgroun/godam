@@ -128,6 +128,8 @@ input[type=file]{display:none}
 .print-btn:hover{background:#2a2a2a;color:#fff;border-color:#666}
 .dl-btn{background:#fff;color:#000}
 .dl-btn:hover{background:#e5e5e5}
+.capture-all-btn{background:#1e3a5f;color:#93c5fd;border:1px solid #1d4ed8}
+.capture-all-btn:hover{background:#1d4ed8;color:#fff}
 .reset-btn{background:#7f1d1d;color:#fca5a5;border:1px solid #991b1b}
 .reset-btn:hover{background:#991b1b;color:#fff}
 /* driver bg colors */
@@ -440,6 +442,7 @@ button:not(:disabled):active{transform:scale(0.95)!important;transition:transfor
     <button class="abtn map-btn" onclick="openMapView()">🗺 전체지도</button>
     <button class="abtn print-btn" onclick="dlPrintHTML()">🖨 탭별인쇄</button>
     <button class="abtn dl-btn" onclick="dlExcel()">📊 탭별엑셀</button>
+    <button class="abtn capture-all-btn" onclick="downloadAllCards()">📷 전체캡쳐</button>
     <button class="abtn reset-btn" onclick="resetAssignments()">🔄 리셋</button>
   </div>
   <div class="tabs" id="tabs"></div>
@@ -657,25 +660,20 @@ function hn(str) {
   return h(str).replace(/\(([^)]*)\)/g, '<span style="white-space:nowrap">($1)</span>');
 }
 
-function openShareCard(drvName) {
+function buildShareCardHTML(drvName) {
   const allPlan = [...plan, ...specialPlan, ...secondaryPlan];
   const zoneRank = z => { const i = ZONE_ORDER.indexOf(z); return i >= 0 ? i : 99; };
   const sub = allPlan.filter(o => o.담당기사 === drvName)
     .sort((a, b) => zoneRank(a.구역) - zoneRank(b.구역) || (a.배송주소||'').localeCompare(b.배송주소||'') || a.거래처명.localeCompare(b.거래처명));
-  if (!sub.length) return;
-
-  // 거래처 그룹 (구역순 유지)
-  const custOrder = [];
-  const custItems = new Map();
+  if (!sub.length) return null;
+  const custOrder = [], custItems = new Map();
   sub.forEach(o => {
     if (!custItems.has(o.거래처명)) { custOrder.push(o.거래처명); custItems.set(o.거래처명, { addr: o.배송주소||'', items: [] }); }
     custItems.get(o.거래처명).items.push(o);
   });
-
   const dateStr = dlDate
     ? `${dlDate.slice(0,4)}.${dlDate.slice(4,6)}.${dlDate.slice(6,8)}`
     : new Date().toLocaleDateString('ko-KR');
-
   let seq = 0;
   const rows = custOrder.map(name => {
     seq++;
@@ -693,8 +691,7 @@ function openShareCard(drvName) {
       <td style="background:${bg};padding:8px 12px;font-size:17px;font-weight:800;color:#111;text-align:center;vertical-align:middle;white-space:nowrap;width:60px">${qtyStr}</td>
     </tr>`;
   }).join('');
-
-  $('share-content').innerHTML = `
+  return { html: `
     <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:14px;padding-bottom:10px;border-bottom:3px solid #111">
       <div style="font-size:19px;font-weight:900;color:#111;letter-spacing:-.5px">고담 배송플랜</div>
       <div style="font-size:12px;color:#888">${dateStr}</div>
@@ -711,11 +708,46 @@ function openShareCard(drvName) {
     <div style="margin-top:10px;display:flex;justify-content:space-between;font-size:12px;color:#888">
       <span>고담물산</span>
       <span>총 <b style="color:#333;font-size:13px">${custOrder.length}</b> 거래처 · <b style="color:#333;font-size:13px">${sub.length}</b> 건</span>
-    </div>`;
+    </div>`, custCount: custOrder.length, rowCount: sub.length };
+}
 
+function openShareCard(drvName) {
+  const result = buildShareCardHTML(drvName);
+  if (!result) return;
+  $('share-content').innerHTML = result.html;
   $('share-modal-title').textContent = `${drvName} 배송리스트`;
   $('share-dl-btn').dataset.drv = drvName;
   openModal('share-modal');
+}
+
+async function downloadAllCards() {
+  if (!plan || !plan.length) return;
+  if (typeof html2canvas === 'undefined') { alert('이미지 라이브러리 로딩 중입니다. 잠시 후 다시 시도하세요.'); return; }
+  const allDrvs = [...new Set([...currentCfg.map(d=>d.name), '택배', '미배정'])];
+  const drvs = allDrvs.filter(d => [...plan, ...specialPlan, ...secondaryPlan].some(o => o.담당기사 === d));
+  if (!drvs.length) return;
+  const tmp = document.createElement('div');
+  tmp.style.cssText = 'position:fixed;left:-9999px;top:0;width:420px;padding:20px;background:#fff;font-family:\'Apple SD Gothic Neo\',\'맑은 고딕\',sans-serif;z-index:-1';
+  document.body.appendChild(tmp);
+  showToast(`0/${drvs.length} 캡쳐 중...`, '#0369a1');
+  let done = 0;
+  for (const drvName of drvs) {
+    const result = buildShareCardHTML(drvName);
+    if (!result) continue;
+    tmp.innerHTML = result.html;
+    await html2canvas(tmp, { backgroundColor: '#ffffff', scale: 2, useCORS: true, logging: false })
+      .then(canvas => {
+        const a = document.createElement('a');
+        a.download = `배송리스트_${drvName}_${dlDate||'today'}.png`;
+        a.href = canvas.toDataURL('image/png');
+        a.click();
+      });
+    done++;
+    showToast(`${done}/${drvs.length} 캡쳐 중...`, '#0369a1');
+    await new Promise(r => setTimeout(r, 400));
+  }
+  tmp.remove();
+  showToast(`✅ ${done}명 전체 캡쳐 완료!`);
 }
 
 function downloadShareCard() {

@@ -440,10 +440,8 @@ button:not(:disabled):active{transform:scale(0.95)!important;transition:transfor
   <div class="sum-grid" id="sum-grid"></div>
   <div class="actions">
     <button class="abtn share-act-btn" onclick="shareLink()" style="background:#0369a1;color:#fff">📱 공유</button>
-    <button class="abtn map-btn" onclick="openMapView()">🗺 전체지도</button>
     <button class="abtn print-btn" onclick="dlPrintHTML()">🖨 탭별인쇄</button>
     <button class="abtn dl-btn" onclick="dlExcel()">📊 탭별엑셀</button>
-    <button class="abtn capture-all-btn" onclick="downloadAllCards()">📷 전체캡쳐</button>
     <button class="abtn reset-btn" onclick="resetAssignments()">🔄 리셋</button>
   </div>
   <div class="tabs" id="tabs"></div>
@@ -661,11 +659,13 @@ function hn(str) {
   return h(str).replace(/\(([^)]*)\)/g, '<span style="white-space:nowrap">($1)</span>');
 }
 
-function buildShareCardHTML(drvName) {
+function buildShareCardHTML(drvName, customRows) {
   const allPlan = [...plan, ...specialPlan, ...secondaryPlan];
   const zoneRank = z => { const i = ZONE_ORDER.indexOf(z); return i >= 0 ? i : 99; };
-  const sub = allPlan.filter(o => o.담당기사 === drvName)
-    .sort((a, b) => zoneRank(a.구역) - zoneRank(b.구역) || (a.배송주소||'').localeCompare(b.배송주소||'') || a.거래처명.localeCompare(b.거래처명));
+  const sub = customRows
+    ? [...customRows].sort((a, b) => zoneRank(a.구역) - zoneRank(b.구역) || (a.배송주소||'').localeCompare(b.배송주소||'') || a.거래처명.localeCompare(b.거래처명))
+    : allPlan.filter(o => o.담당기사 === drvName)
+        .sort((a, b) => zoneRank(a.구역) - zoneRank(b.구역) || (a.배송주소||'').localeCompare(b.배송주소||'') || a.거래처명.localeCompare(b.거래처명));
   if (!sub.length) return null;
   const custOrder = [], custItems = new Map();
   sub.forEach(o => {
@@ -718,6 +718,26 @@ function openShareCard(drvName) {
   $('share-content').innerHTML = result.html;
   $('share-modal-title').textContent = `${drvName} 배송리스트`;
   $('share-dl-btn').dataset.drv = drvName;
+  openModal('share-modal');
+}
+function openTabMap(tid) {
+  const meta = tabMeta.get(tid);
+  if (!meta) return;
+  if (meta.drv) { openMapView(meta.drv); return; }
+  if (tid === 'tab_all') { openMapView(); return; }
+  openMapView(null, meta.rows);
+}
+function openTabCapture(tid) {
+  const meta = tabMeta.get(tid);
+  if (!meta) return;
+  if (meta.drv) { openShareCard(meta.drv); return; }
+  if (tid === 'tab_all') { downloadAllCards(); return; }
+  const label = document.querySelector(`.tab-btn[data-panel="${tid}"]`)?.textContent.replace(/\s*\(\d+\)\s*$/, '').trim() || tid;
+  const result = buildShareCardHTML(label, meta.rows);
+  if (!result) { showToast('캡쳐할 항목이 없습니다.', '#ef4444'); return; }
+  $('share-content').innerHTML = result.html;
+  $('share-modal-title').textContent = `${label} 배송리스트`;
+  $('share-dl-btn').dataset.drv = label;
   openModal('share-modal');
 }
 
@@ -779,7 +799,7 @@ function closeModal(id) {
   document.body.style.overflow = '';
 }
 
-let mapDrvFilter = null, _leafletMap = null;
+let mapDrvFilter = null, mapCustomItems = null, _leafletMap = null;
 let _lfReady = false, _kkReady = false, _kkFailed = false;
 const LS_GEOCACHE = 'bp_geocache_v1';
 
@@ -823,8 +843,9 @@ function _mapCheck() {
   if (_lfReady && (_kkReady || _kkFailed)) _mapBoot();
 }
 
-function openMapView(drvFilter) {
+function openMapView(drvFilter, customItems) {
   mapDrvFilter = drvFilter || null;
+  mapCustomItems = customItems || null;
   const title = mapDrvFilter ? `🗺 ${mapDrvFilter} 배송지` : '🗺 배송지 지도';
   document.querySelector('#map-modal .modal-hdr span').textContent = title;
   openModal('map-modal');
@@ -880,7 +901,7 @@ function initMap() {
     attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
   }).addTo(_leafletMap);
 
-  const allPlanItems = [...plan, ...specialPlan, ...secondaryPlan];
+  const allPlanItems = mapCustomItems ? [...mapCustomItems] : [...plan, ...specialPlan, ...secondaryPlan];
   const filtered = mapDrvFilter ? allPlanItems.filter(o => o.담당기사 === mapDrvFilter) : allPlanItems;
   const allDrvs = [...new Set([...currentCfg.map(d=>d.name), '택배', '미배정'])];
   const activeDrvs = mapDrvFilter ? [mapDrvFilter] : allDrvs.filter(d => filtered.some(o=>o.담당기사===d && o.배송주소));
@@ -1089,10 +1110,11 @@ function genFilterBar(rows, filteredRows, tid, isAll, showDrv) {
   const badge = filteredRows.length < rows.length
     ? `<span class="flt-badge">${filteredRows.length}/${rows.length}건</span>` : '';
   const addrBtn = `<button class="filter-chip addr-toggle-btn${addrHidden?' flt-active':''}" onclick="toggleAddressCol()">${addrHidden?'주소 보기':'주소 숨기기'}</button>`;
-  const drv = tabMeta.get(tid)?.drv || null;
-  const esc = s => s.replace(/'/g,"\\'");
-  const mapBtn  = `<button class="filter-chip" onclick="${drv?`openMapView('${esc(drv)}')`:'openMapView()'}">🗺 지도</button>`;
-  const capBtn  = `<button class="filter-chip" onclick="${drv?`openShareCard('${esc(drv)}')`:'downloadAllCards()'}">📷 캡쳐</button>`;
+  const isAllTab = (tid === 'tab_all');
+  const mapLabel = isAllTab ? '🗺 전체지도' : '🗺 지도';
+  const capLabel = isAllTab ? '📷 전체캡쳐' : '📷 캡쳐';
+  const mapBtn = `<button class="filter-chip" onclick="openTabMap('${tid}')">${mapLabel}</button>`;
+  const capBtn = `<button class="filter-chip" onclick="openTabCapture('${tid}')">${capLabel}</button>`;
   return `<div class="filter-bar">${chips}${reset}${badge}${addrBtn}${mapBtn}${capBtn}</div>`;
 }
 function openFilterPopup(tid, col, evt) {

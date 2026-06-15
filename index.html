@@ -2074,8 +2074,8 @@ function renderResults(cfg){
     panel2.className = 'tab-panel';
     panel2.id = 'tab_secondary';
     const sorted2 = [...secondaryPlan].sort((a,b)=>a.거래처명.localeCompare(b.거래처명));
-    panel2.innerHTML = makePanelHTML(sorted2, false, false, !addrHidden, false, false, 'tab_secondary');
-    tabMeta.set('tab_secondary', { rows: sorted2, showDrv: false, showReassign: false, allowAddrAdd: false });
+    panel2.innerHTML = makePanelHTML(sorted2, false, true, !addrHidden, false, false, 'tab_secondary');
+    tabMeta.set('tab_secondary', { rows: sorted2, showDrv: false, showReassign: true, allowAddrAdd: false });
     tp.appendChild(panel2);
   }
 
@@ -2098,8 +2098,8 @@ function renderResults(cfg){
     panel.className = 'tab-panel';
     panel.id = 'tab_special_nari';
     const sorted = [...specialPlan].sort((a,b)=>a.거래처명.localeCompare(b.거래처명));
-    panel.innerHTML = makePanelHTML(sorted, false, false, !addrHidden, true, false, 'tab_special_nari');
-    tabMeta.set('tab_special_nari', { rows: sorted, showDrv: false, showReassign: false, allowAddrAdd: true });
+    panel.innerHTML = makePanelHTML(sorted, false, true, !addrHidden, true, false, 'tab_special_nari');
+    tabMeta.set('tab_special_nari', { rows: sorted, showDrv: false, showReassign: true, allowAddrAdd: true });
     tp.appendChild(panel);
   }
   tabs.addEventListener('click', e => {

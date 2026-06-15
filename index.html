@@ -440,7 +440,6 @@ button:not(:disabled):active{transform:scale(0.95)!important;transition:transfor
   <div class="sum-grid" id="sum-grid"></div>
   <div class="actions">
     <button class="abtn share-act-btn" onclick="shareLink()" style="background:#0369a1;color:#fff">📱 공유</button>
-    <button class="abtn reset-btn" onclick="resetAssignments()">🔄 리셋</button>
   </div>
   <div class="tabs" id="tabs"></div>
   <div id="tab-panels"></div>
@@ -1117,7 +1116,8 @@ function genFilterBar(rows, filteredRows, tid, isAll, showDrv) {
   const capBtn   = `<button class="filter-chip" onclick="openTabCapture('${tid}')">${capLabel}</button>`;
   const printBtn = `<button class="filter-chip" onclick="dlPrintHTML()">${printLabel}</button>`;
   const xlsBtn   = `<button class="filter-chip" onclick="dlExcel()">${xlsLabel}</button>`;
-  return `<div class="filter-bar">${chips}${reset}${badge}${addrBtn}${mapBtn}${capBtn}${printBtn}${xlsBtn}</div>`;
+  const resetBtn = isAllTab ? `<button class="filter-chip flt-reset" style="margin-left:auto" onclick="resetAssignments()">🔄 리셋</button>` : '';
+  return `<div class="filter-bar">${chips}${reset}${badge}${addrBtn}${mapBtn}${capBtn}${printBtn}${xlsBtn}${resetBtn}</div>`;
 }
 function openFilterPopup(tid, col, evt) {
   evt.stopPropagation();

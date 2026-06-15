@@ -1276,16 +1276,12 @@ function saveDriverSettings() {
   try { localStorage.setItem(LS_DRIVERS, JSON.stringify(cfg)); } catch(e) {}
   currentCfg = cfg;
   if (plan && plan.length) {
-    // 신규 기사의 구역에 있는 _manual 아이템 초기화 (신규 기사가 배정받을 수 있도록)
-    const oldNames = new Set(oldCfg.map(d=>d.name));
-    const newZones = new Set(cfg.filter(d=>!oldNames.has(d.name)).flatMap(d=>d.zones));
-    if (newZones.size > 0) {
-      [...plan, ...specialPlan, ...secondaryPlan].forEach(o => {
-        if (newZones.has(o.구역)) o._manual = false;
-      });
-    }
     [...plan, ...specialPlan, ...secondaryPlan].forEach(o => {
-      if (!o._manual) o.담당기사 = getDriver(o.구역, cfg);
+      if (o._manual) return;
+      const oldDrv = getDriver(o.구역, oldCfg);
+      const newDrv = getDriver(o.구역, cfg);
+      // 구역 소유권이 실제로 바뀐 경우만 재배정 (기사명 변경/구역 이동/신규 기사 추가)
+      if (oldDrv !== newDrv) o.담당기사 = newDrv;
     });
     savePlan();
     const sy = window.scrollY;
@@ -1530,9 +1526,10 @@ function deleteDriverRow(span) {
 }
 
 function addRow(name='', zones=''){
+  const zonesStr = Array.isArray(zones) ? zones.join(', ') : zones;
   const tr = document.createElement('tr');
   tr.innerHTML = `<td><input type="text" value="${h(name)}" placeholder="기사 이름"></td>
-    <td><input type="text" value="${h(zones)}" placeholder="강남권, 서울중부권, ..."></td>
+    <td><input type="text" value="${h(zonesStr)}" placeholder="강남권, 서울중부권, ..."></td>
     <td style="text-align:center"><span style="cursor:pointer;color:#ef4444;font-size:17px" onclick="deleteDriverRow(this)">×</span></td>`;
   $('drv-tbody').appendChild(tr);
 }

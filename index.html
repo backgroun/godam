@@ -1513,11 +1513,24 @@ function h(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').repla
 
 function toggleStg(){ openModal('drv-modal'); }
 
+function deleteDriverRow(span) {
+  const tr = span.closest('tr');
+  const drvName = tr.querySelector('input')?.value.trim();
+  if (drvName && plan) {
+    const hasAssigned = [...plan, ...specialPlan, ...secondaryPlan].some(o => o.담당기사 === drvName);
+    if (hasAssigned) {
+      alert(`"${drvName}" 기사에게 배정된 건이 있습니다.\n미배정으로 변경 후 삭제해 주세요.`);
+      return;
+    }
+  }
+  tr.remove();
+}
+
 function addRow(name='', zones=''){
   const tr = document.createElement('tr');
   tr.innerHTML = `<td><input type="text" value="${h(name)}" placeholder="기사 이름"></td>
     <td><input type="text" value="${h(zones)}" placeholder="강남권, 서울중부권, ..."></td>
-    <td style="text-align:center"><span style="cursor:pointer;color:#ef4444;font-size:17px" onclick="this.closest('tr').remove()">×</span></td>`;
+    <td style="text-align:center"><span style="cursor:pointer;color:#ef4444;font-size:17px" onclick="deleteDriverRow(this)">×</span></td>`;
   $('drv-tbody').appendChild(tr);
 }
 

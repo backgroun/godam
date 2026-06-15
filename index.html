@@ -524,6 +524,12 @@ function chunkStr(str, size) {
 }
 function custDisplay(name) { return chunkStr(name, 15); }
 function itemDisplay(name) { return chunkStr(name, 22); }
+function stripTitle(name) {
+  const titles = ['기사','차장','부장','이사','대리','과장','팀장','사원','실장','본부장','상무','전무','사장'];
+  const parts = name.split(' ');
+  if (parts.length > 1 && titles.includes(parts[parts.length - 1])) return parts.slice(0, -1).join(' ');
+  return name;
+}
 
 function getDrvHex(drv) {
   const allDrvs = [...currentCfg.map(d=>d.name), '택배', '미배정'];
@@ -1970,8 +1976,8 @@ function renderResults(cfg){
   totalDiv.className = 'sc ctotal';
   totalDiv.innerHTML = `
     <div class="drv">전체</div>
-    <div class="big">${totalCusts}<span style="font-size:11px;font-weight:600;opacity:.7">(전체수량)</span></div>
-    <div class="zns">수량 합계 ${totalQtyStr}</div>`;
+    <div class="zns">수량 합계 : ${totalQtyStr}</div>
+    <div class="big">${totalCusts}</div>`;
   sg.appendChild(totalDiv);
 
   allDrvs.forEach((drv,i) => {
@@ -1984,13 +1990,27 @@ function renderResults(cfg){
     const sid = 'tab_' + drv.replace(/[^a-zA-Z0-9가-힣]/g,'_');
     const div = document.createElement('div');
     div.className = `sc ${clr}`;
-    div.innerHTML = `<div class="drv" data-cnt="${customers}">${h(drv)}</div>
+    div.innerHTML = `<div class="drv" data-cnt="${customers}">${h(stripTitle(drv))}</div>
       ${d ? `<div class="zns">${d.zones.join(' · ')}</div>` : ''}
       <div class="big">${customers}</div>
       `;
     sg.appendChild(div);
   });
 
+  if (secondaryPlan.length) {
+    const cnt2 = new Set(secondaryPlan.map(o=>o.거래처명)).size;
+    const div2 = document.createElement('div');
+    div2.className = 'sc c2nd';
+    div2.innerHTML = `<div class="drv">2차</div><div class="big">${cnt2}</div>`;
+    sg.appendChild(div2);
+  }
+  if (specialPlan.length) {
+    const cntS = new Set(specialPlan.map(o=>o.거래처명)).size;
+    const divS = document.createElement('div');
+    divS.className = 'sc cspecial';
+    divS.innerHTML = `<div class="drv">능동미나리</div><div class="big">${cntS}</div>`;
+    sg.appendChild(divS);
+  }
 
   // 전체 리스트 탭 — 2차 포함, 2차 항목 최상단
   const is2ch = o => (String(o.거래처명||'')+String(o.품목명||'')).includes('2차');
@@ -2029,7 +2049,7 @@ function renderResults(cfg){
     const btn = document.createElement('button');
     btn.className = 'tab-btn';
     btn.dataset.panel = sid;
-    btn.textContent = `${drv} (${cnt})`;
+    btn.textContent = `${stripTitle(drv)} (${cnt})`;
     btn.onclick = () => {
       document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
       document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));

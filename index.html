@@ -524,7 +524,7 @@ function chunkStr(str, size) {
   return chunks.join('<br>');
 }
 function custDisplay(name) { return chunkStr(name, 15); }
-function itemDisplay(name) { return chunkStr(name, 20); }
+function itemDisplay(name) { return chunkStr(name, 22); }
 
 function getDrvHex(drv) {
   const allDrvs = [...currentCfg.map(d=>d.name), '택배', '미배정'];
@@ -1794,7 +1794,7 @@ function makePanelHTML(rows, showDrv, showReassign, showAddr = true, allowAddrAd
           <td style="${s};text-align:center;color:#888;white-space:nowrap;min-width:32px">${seq}</td>
           <td class="mob-hide" style="${s}"><span class="zchip" style="${ZONE_STYLE[o.구역]||ZONE_STYLE['기타']}">${h(o.구역)}</span></td>
           <td class="cust" style="${s}${manualItalic}${manualColor}">${custDisplay(o.거래처명)}</td>
-          <td style="${s}">${itemDisplay(item.품목명)}</td>
+          <td style="${s};word-break:break-all">${itemDisplay(item.품목명)}</td>
           <td style="${s};text-align:center;white-space:nowrap">${h(item.수량)}</td>
           <td style="${s};text-align:center;white-space:nowrap">${h(item.구분)}</td>
           <td class="note${noteHide}" style="${s};white-space:nowrap">${note}</td>
@@ -1811,7 +1811,7 @@ function makePanelHTML(rows, showDrv, showReassign, showAddr = true, allowAddrAd
           <td style="${s}"></td>
           <td class="mob-hide" style="${s}"></td>
           <td style="${s}"></td>
-          <td style="${s}">${itemDisplay(item.품목명)}</td>
+          <td style="${s};word-break:break-all">${itemDisplay(item.품목명)}</td>
           <td style="${s};text-align:center;white-space:nowrap">${h(item.수량)}</td>
           <td style="${s};text-align:center;white-space:nowrap">${h(item.구분)}</td>
           <td class="note${noteHide}" style="${s};white-space:nowrap">${note}</td>

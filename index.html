@@ -2003,9 +2003,11 @@ function renderResults(cfg){
 
   if (secondaryPlan.length) {
     const cnt2 = new Set(secondaryPlan.map(o=>o.거래처명)).size;
+    const qty2 = secondaryPlan.reduce((s,o)=>s+(parseFloat(o.수량)||0),0);
+    const qty2Str = qty2%1===0 ? String(Math.round(qty2)) : qty2.toFixed(1);
     const div2 = document.createElement('div');
     div2.className = 'sc c2nd';
-    div2.innerHTML = `<div class="drv">2차</div><div class="big">${cnt2}</div>`;
+    div2.innerHTML = `<div class="drv">2차</div><div class="zns">수량 합계 : ${qty2Str}</div><div class="big">${cnt2}</div>`;
     div2.onclick = () => { document.querySelector('.tab-btn[data-panel="tab_secondary"]')?.click(); $('tabs').scrollIntoView({behavior:'smooth',block:'start'}); };
     sg.appendChild(div2);
   }

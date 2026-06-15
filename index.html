@@ -1115,8 +1115,10 @@ function genFilterBar(rows, filteredRows, tid, isAll, showDrv) {
   const capBtn   = `<button class="filter-chip" onclick="openTabCapture('${tid}')">${capLabel}</button>`;
   const printBtn = `<button class="filter-chip" onclick="dlPrintHTML()">${printLabel}</button>`;
   const xlsBtn   = `<button class="filter-chip" onclick="dlExcel()">${xlsLabel}</button>`;
-  const resetBtn = isAllTab ? `<button class="filter-chip" style="margin-left:auto;background:#dc2626;color:#fff;border-color:#dc2626" onclick="resetAssignments()">🔄 리셋</button>` : '';
-  return `<div class="filter-bar">${chips}${reset}${badge}${addrBtn}${mapBtn}${capBtn}${printBtn}${xlsBtn}${resetBtn}</div>`;
+  const sep = `<span style="width:1px;height:20px;background:#d1d5db;flex-shrink:0;align-self:center"></span>`;
+  const resetBtnHtml = isAllTab ? `<button class="filter-chip" style="background:#dc2626;color:#fff;border-color:#dc2626" onclick="resetAssignments()">🔄 리셋</button>` : '';
+  const rightBtns = `<div style="display:flex;gap:6px;margin-left:auto">${addrBtn}${resetBtnHtml}</div>`;
+  return `<div class="filter-bar">${chips}${reset}${badge}${sep}${mapBtn}${capBtn}${sep}${printBtn}${xlsBtn}${rightBtns}</div>`;
 }
 function openFilterPopup(tid, col, evt) {
   evt.stopPropagation();
@@ -1968,9 +1970,8 @@ function renderResults(cfg){
   totalDiv.className = 'sc ctotal';
   totalDiv.innerHTML = `
     <div class="drv">전체</div>
-    <div class="big">${totalCusts}<span style="font-size:13px;font-weight:600;opacity:.75"> 거래처</span></div>
-    <div class="zns">${activeDrvCnt}명 기사</div>
-    <div class="qty">수량 합계 ${totalQtyStr}</div>`;
+    <div class="big">${totalQtyStr}<span style="font-size:11px;font-weight:600;opacity:.7">(전체수량)</span></div>
+    <div class="zns">${totalCusts}거래처 · ${activeDrvCnt}명 기사</div>`;
   sg.appendChild(totalDiv);
 
   allDrvs.forEach((drv,i) => {

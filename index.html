@@ -128,6 +128,8 @@ input[type=file]{display:none}
 .print-btn:hover{background:#2a2a2a;color:#fff;border-color:#666}
 .dl-btn{background:#fff;color:#000}
 .dl-btn:hover{background:#e5e5e5}
+.reset-btn{background:#7f1d1d;color:#fca5a5;border:1px solid #991b1b}
+.reset-btn:hover{background:#991b1b;color:#fff}
 /* driver bg colors */
 .c1{background:#c2410c}.c2{background:#15803d}.c3{background:#1e40af}.c4{background:#6d28d9}.c5{background:#9d174d}.cmiss{background:#7f1d1d}.cspecial{background:#0e7490}.c2nd{background:#78350f}.ctbae{background:#0369a1}
 /* TAB-PANEL 공통 화이트 테마 */
@@ -218,9 +220,7 @@ button:not(:disabled):active{transform:scale(0.95)!important;transition:transfor
   /* 검색: 한 줄, 주소숨기기 제거 */
   #search-row{flex-wrap:nowrap;gap:6px}
   #addr-toggle{display:none!important}
-  /* 공유/지도/인쇄 버튼 숨김 */
-  .actions .share-act-btn,.actions .map-btn,.actions .print-btn{display:none!important}
-  .actions{display:flex;grid-template-columns:unset;gap:8px;justify-content:flex-end}
+  .actions{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-start}
   /* 탭 스크롤 */
   .tabs{flex-wrap:nowrap;overflow-x:auto;gap:3px;padding-bottom:2px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
   .tabs::-webkit-scrollbar{display:none}
@@ -239,9 +239,7 @@ button:not(:disabled):active{transform:scale(0.95)!important;transition:transfor
   .search-inp{font-size:15px;padding:11px 12px;flex:1;width:auto;min-width:0}
   .search-btn{padding:11px 16px;font-size:14px;min-height:44px;flex-shrink:0}
   .addr-toggle-btn{display:none!important}
-  /* 액션 버튼 모바일 전체 숨김 */
-  .actions{display:none!important}
-  .actions .abtn{padding:13px 8px;font-size:14px;text-align:center;min-height:48px}
+  .actions .abtn{padding:10px 8px;font-size:13px;text-align:center;min-height:44px;flex:1 1 calc(33% - 4px)}
   .dtbl{font-size:13px}
   .dtbl th,.dtbl td{padding:7px 8px}
   .stg-btn-row{flex-wrap:wrap}
@@ -437,9 +435,10 @@ button:not(:disabled):active{transform:scale(0.95)!important;transition:transfor
   </div>
   <div class="actions">
     <button class="abtn share-act-btn" onclick="shareLink()" style="background:#0369a1;color:#fff">📱 공유</button>
-    <button class="abtn map-btn" onclick="openMapView()">[지도]</button>
-    <button class="abtn print-btn" onclick="dlPrintHTML()">[인쇄]</button>
-    <button class="abtn dl-btn" onclick="dlExcel()">[엑셀]</button>
+    <button class="abtn map-btn" onclick="openMapView()">🗺 지도</button>
+    <button class="abtn print-btn" onclick="dlPrintHTML()">🖨 인쇄</button>
+    <button class="abtn dl-btn" onclick="dlExcel()">📊 엑셀</button>
+    <button class="abtn reset-btn" onclick="resetAssignments()">🔄 리셋</button>
   </div>
   <div class="tabs" id="tabs"></div>
   <div id="tab-panels"></div>
@@ -628,6 +627,18 @@ function showUploadOrders() {
 
 function openOrderPicker() {
   document.getElementById('f-o').click();
+}
+
+function resetAssignments() {
+  if (!plan || !plan.length) return;
+  if (!confirm('모든 배정 상태를 초기화하시겠습니까?\n구역 설정 기준으로 재배정됩니다.')) return;
+  [...plan, ...specialPlan, ...secondaryPlan].forEach(o => {
+    o._manual = false;
+    o.담당기사 = getDriver(o.구역, currentCfg);
+  });
+  savePlan();
+  renderResults(currentCfg);
+  showToast('배정이 초기화되었습니다.');
 }
 
 function reassign(name, newDriver) {

@@ -1970,8 +1970,8 @@ function renderResults(cfg){
   totalDiv.className = 'sc ctotal';
   totalDiv.innerHTML = `
     <div class="drv">전체</div>
-    <div class="big">${totalQtyStr}<span style="font-size:11px;font-weight:600;opacity:.7">(전체수량)</span></div>
-    <div class="zns">${totalCusts}거래처 · ${activeDrvCnt}명 기사</div>`;
+    <div class="big">${totalCusts}<span style="font-size:11px;font-weight:600;opacity:.7">(전체수량)</span></div>
+    <div class="zns">수량 합계 ${totalQtyStr}</div>`;
   sg.appendChild(totalDiv);
 
   allDrvs.forEach((drv,i) => {
@@ -1985,8 +1985,8 @@ function renderResults(cfg){
     const div = document.createElement('div');
     div.className = `sc ${clr}`;
     div.innerHTML = `<div class="drv" data-cnt="${customers}">${h(drv)}</div>
-      <div class="big">${customers}</div>
       ${d ? `<div class="zns">${d.zones.join(' · ')}</div>` : ''}
+      <div class="big">${customers}</div>
       `;
     sg.appendChild(div);
   });

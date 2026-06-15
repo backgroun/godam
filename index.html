@@ -121,9 +121,6 @@ input[type=file]{display:none}
 .addr-toggle-btn.active{background:#071526;color:#60a5fa;border-color:#1e3a5f}
 .upload-card{padding:12px 20px}
 /* STATS */
-.stat-body{margin-top:10px;overflow-x:auto}
-.stat-hdr{font-size:14px;font-weight:700;color:#888;cursor:pointer;user-select:none;display:flex;align-items:center;gap:6px;margin-top:16px;padding:13px 18px;background:#181818;border:1px solid #2e2e2e;border-radius:12px;transition:.15s}
-.stat-hdr:hover{color:#ddd;border-color:#555}
 /* ACTIONS */
 .actions{display:flex;gap:8px;justify-content:flex-end;margin-bottom:10px}
 .actions .abtn{padding:10px 22px;font-size:14px}
@@ -251,7 +248,7 @@ button:not(:disabled):active{transform:scale(0.95)!important;transition:transfor
   .dtbl{font-size:13px}
   .dtbl th,.dtbl td{padding:7px 8px}
   .stg-btn-row{flex-wrap:wrap}
-  .stat-hdr{font-size:13px;padding:10px 14px}
+
 }
 @media(max-width:480px){
   .sum-grid{grid-template-columns:1fr}
@@ -445,12 +442,6 @@ button:not(:disabled):active{transform:scale(0.95)!important;transition:transfor
   <div class="sum-grid" id="sum-grid"></div>
   <div class="tabs" id="tabs"></div>
   <div id="tab-panels"></div>
-  <div class="stat-hdr" id="stat-hdr" style="display:none" onclick="toggleStats()">
-    📊 납품 통계 <span id="stats-arrow" style="margin-left:auto">▼</span>
-  </div>
-  <div id="stats-body" class="stat-body" style="display:none">
-    <div id="stats-content"></div>
-  </div>
 </div>
 
 </div>
@@ -1322,12 +1313,6 @@ function jumpToTab(panelId) {
   if (panel) panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-function toggleStats() {
-  const body = $('stats-body'), arrow = $('stats-arrow');
-  const open = body.style.display !== 'none';
-  body.style.display = open ? 'none' : 'block';
-  arrow.textContent = open ? '▼' : '▲';
-}
 
 function toggleMasterList() { openMasterModal(); }
 
@@ -1420,88 +1405,6 @@ function _saveMasterAddr(name, addr) {
   }
 }
 
-function renderStats() {
-  if (!plan || !plan.length) { $('stat-hdr').style.display='none'; return; }
-  const allItems = [...plan, ...specialPlan, ...secondaryPlan];
-
-  // 거래처별 납품 수량
-  const custMap = new Map();
-  allItems.forEach(o => {
-    const key = o.거래처명;
-    if (!custMap.has(key)) custMap.set(key, { 담당기사: o.담당기사, 구역: o.구역, qty: 0, cnt: 0 });
-    const e = custMap.get(key);
-    e.qty += parseFloat(o.수량) || 0;
-    e.cnt++;
-  });
-  const custRows = [...custMap.entries()].sort((a,b) => b[1].qty - a[1].qty);
-
-  // 품목별 납품 수량
-  const itemMap = new Map();
-  allItems.forEach(o => {
-    const key = String(o.품목명||'').trim() || '(미입력)';
-    if (!itemMap.has(key)) itemMap.set(key, { qty: 0, cnt: 0 });
-    const e = itemMap.get(key);
-    e.qty += parseFloat(o.수량) || 0;
-    e.cnt++;
-  });
-  const itemRows = [...itemMap.entries()].sort((a,b) => b[1].qty - a[1].qty);
-
-  let custHtml = `<table class="ptbl" style="table-layout:auto"><thead><tr>
-    <th style="width:32px;text-align:center">#</th>
-    <th>거래처명</th><th>담당기사</th><th>구역</th>
-    <th style="text-align:center;width:60px">납품수량</th>
-    <th style="text-align:center;width:50px">품목수</th>
-  </tr></thead><tbody>`;
-  custRows.forEach(([name, e], i) => {
-    const bg = i%2===0 ? '#141414' : '#202020';
-    custHtml += `<tr>
-      <td style="background:${bg};text-align:center;color:#888">${i+1}</td>
-      <td style="background:${bg};font-weight:700">${h(name)}</td>
-      <td style="background:${bg}">${h(e.담당기사||'-')}</td>
-      <td style="background:${bg}">${h(e.구역||'-')}</td>
-      <td style="background:${bg};text-align:center;font-weight:700">${e.qty % 1 === 0 ? e.qty : e.qty.toFixed(1)}</td>
-      <td style="background:${bg};text-align:center">${e.cnt}</td>
-    </tr>`;
-  });
-  custHtml += `</tbody></table>`;
-
-  let itemHtml = `<table class="ptbl" style="table-layout:auto"><thead><tr>
-    <th style="width:32px;text-align:center">#</th>
-    <th>품목명</th>
-    <th style="text-align:center;width:60px">총납품수량</th>
-    <th style="text-align:center;width:50px">주문건수</th>
-  </tr></thead><tbody>`;
-  itemRows.forEach(([name, e], i) => {
-    const bg = i%2===0 ? '#141414' : '#202020';
-    itemHtml += `<tr>
-      <td style="background:${bg};text-align:center;color:#888">${i+1}</td>
-      <td style="background:${bg};font-weight:700">${h(name)}</td>
-      <td style="background:${bg};text-align:center;font-weight:700">${e.qty % 1 === 0 ? e.qty : e.qty.toFixed(1)}</td>
-      <td style="background:${bg};text-align:center">${e.cnt}</td>
-    </tr>`;
-  });
-  itemHtml += `</tbody></table>`;
-
-  $('stats-content').innerHTML = `
-    <div style="display:flex;gap:8px;margin-bottom:10px">
-      <button onclick="showStatTab('cust')" id="stab-cust" style="padding:6px 16px;border-radius:7px;border:none;cursor:pointer;font-size:13px;font-weight:700;background:#fff;color:#000">거래처별 납품수량</button>
-      <button onclick="showStatTab('item')" id="stab-item" style="padding:6px 16px;border-radius:7px;border:1px solid #383838;cursor:pointer;font-size:13px;font-weight:700;background:#1a1a1a;color:#bbb">품목별 납품수량</button>
-    </div>
-    <div id="stab-cust-body">${custHtml}</div>
-    <div id="stab-item-body" style="display:none">${itemHtml}</div>`;
-  $('stat-hdr').style.display = 'flex';
-}
-
-function showStatTab(tab) {
-  $('stab-cust-body').style.display = tab==='cust' ? '' : 'none';
-  $('stab-item-body').style.display = tab==='item' ? '' : 'none';
-  $('stab-cust').style.cssText = tab==='cust'
-    ? 'padding:6px 16px;border-radius:7px;border:none;cursor:pointer;font-size:13px;font-weight:700;background:#fff;color:#000'
-    : 'padding:6px 16px;border-radius:7px;border:1px solid #383838;cursor:pointer;font-size:13px;font-weight:700;background:#1a1a1a;color:#bbb';
-  $('stab-item').style.cssText = tab==='item'
-    ? 'padding:6px 16px;border-radius:7px;border:none;cursor:pointer;font-size:13px;font-weight:700;background:#fff;color:#000'
-    : 'padding:6px 16px;border-radius:7px;border:1px solid #383838;cursor:pointer;font-size:13px;font-weight:700;background:#1a1a1a;color:#bbb';
-}
 
 function toggleAddForm() {
   const form = $('m-add-form');
@@ -2130,7 +2033,6 @@ function renderResults(cfg){
     if (clicked.dataset.activeBg) clicked.style.background = clicked.dataset.activeBg;
   });
 
-  renderStats();
 }
 
 function getActiveRows() {

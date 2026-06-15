@@ -102,7 +102,7 @@ input[type=file]{display:none}
 .no-addr{display:inline-block;color:#60a5fa;font-size:12px;cursor:pointer;padding:3px 8px;border:1px dashed #1e3a5f;border-radius:4px;background:#071526}
 .no-addr:hover{background:#0d2a4a}
 .addr-edit{cursor:pointer;color:#d8d8d8;font-size:13px}
-.addr-edit:hover{background:#0a1f12!important;outline:1px dashed #22c55e}
+.addr-edit:hover{background:#0a1f12!important;outline:1px dashed #22c55e;color:#d1fae5!important}
 .note{font-size:13px;color:#aaa}
 .cust{font-weight:800;color:#fff;font-size:15px}
 /* SEARCH */
@@ -2077,45 +2077,130 @@ function getActiveTabLabel() {
 
 function dlExcel(){
   if (!plan) return;
-  const wb = XLSX.utils.book_new();
   const fullList = getActiveRows();
   const label = getActiveTabLabel();
+  const activeId = document.querySelector('.tab-panel.active')?.id;
+  const isAll = activeId === 'tab_all';
+  const wb = XLSX.utils.book_new();
 
-  const hdr = ['#','거래처명','품목명','수량','구분','비고','배송주소'];
-  const rows = [hdr];
-  const rowColors = [];
-  let seq = 0;
-  const seen = new Set();
-  fullList.forEach(o => {
-    const key = o.거래처명;
-    const isFirst = !seen.has(key);
-    if (isFirst) { seq++; seen.add(key); }
-    const note = [o.비고1, o.비고2].filter(Boolean).join(' / ');
-    rows.push([
-      isFirst ? seq : '',
-      isFirst ? o.거래처명 : '',
-      o.품목명||'',
-      o.수량||'',
-      o.구분||'',
-      note,
-      isFirst ? (o.배송주소||'') : ''
-    ]);
-    rowColors.push({bg: o._bg||null, font: o._font||null});
-  });
-  const ws1 = XLSX.utils.aoa_to_sheet(rows);
-  ws1['!cols']=[{wch:5},{wch:26},{wch:32},{wch:7},{wch:8},{wch:16},{wch:40}];
-  rowColors.forEach((clr, ri) => {
-    if (!clr.bg && !clr.font) return;
-    for (let c = 0; c < hdr.length; c++) {
-      const addr = XLSX.utils.encode_cell({r: ri + 1, c});
-      if (!ws1[addr]) ws1[addr] = {t:'s', v:''};
-      const s = {};
-      if (clr.bg) s.fill = {patternType:'solid', fgColor:{rgb: clr.bg.slice(1)}};
-      if (clr.font) s.font = {color:{rgb: clr.font.slice(1)}};
-      ws1[addr].s = s;
+  const toRgb = hex => hex ? hex.replace('#','') : null;
+  const thin = {style:'thin', color:{rgb:'CCCCCC'}};
+  const bdr = {top:thin, bottom:thin, left:thin, right:thin};
+  const BF = {name:'맑은 고딕', sz:10};
+  const COL = ['#','거래처명','품목명','수량','구분','비고','배송주소'];
+  const NC = COL.length;
+
+  const wsData = [];
+  const wsMeta = [];
+  const rowBreaks = [];
+  const merges = [];
+
+  const pushSectionHdr = (drvName, custCount) => {
+    wsData.push([`${drvName}  (${custCount}거래처)`, ...Array(NC-1).fill('')]);
+    wsMeta.push({type:'sec'});
+  };
+  const pushColHdr = () => {
+    wsData.push([...COL]);
+    wsMeta.push({type:'colhdr'});
+  };
+  const pushRows = rows => {
+    let seq = 0;
+    const seen = new Set();
+    rows.forEach(o => {
+      const isFirst = !seen.has(o.거래처명);
+      if (isFirst) { seq++; seen.add(o.거래처명); }
+      const note = [o.비고1, o.비고2].filter(Boolean).join(' / ');
+      wsData.push([
+        isFirst ? seq : '',
+        isFirst ? o.거래처명 : '',
+        o.품목명||'',
+        o.수량||'',
+        o.구분||'',
+        note,
+        isFirst ? (o.배송주소||'') : ''
+      ]);
+      wsMeta.push({type:'data', bg:o._bg||null, fnt:o._font||null, seq});
+    });
+  };
+
+  if (isAll) {
+    const drvOrder = [...new Set([...currentCfg.map(d=>d.name), '택배', '미배정'])];
+    const groups = drvOrder.map(drv => ({
+      drv, rows: fullList.filter(o => o.담당기사 === drv)
+    })).filter(g => g.rows.length > 0);
+
+    groups.forEach((g, gi) => {
+      const custCount = new Set(g.rows.map(o => o.거래처명)).size;
+      pushSectionHdr(g.drv, custCount);
+      pushColHdr();
+      pushRows(g.rows);
+      if (gi < groups.length - 1) {
+        rowBreaks.push({r: wsData.length});
+        wsData.push(Array(NC).fill(''));
+        wsMeta.push({type:'blank'});
+      }
+    });
+  } else {
+    pushColHdr();
+    pushRows(fullList);
+  }
+
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+  ws['!cols'] = [{wch:4},{wch:20},{wch:24},{wch:6},{wch:8},{wch:14},{wch:28}];
+  ws['!rows'] = [];
+
+  wsMeta.forEach((meta, ri) => {
+    if (meta.type === 'sec') {
+      merges.push({s:{r:ri,c:0}, e:{r:ri,c:NC-1}});
+      for (let c = 0; c < NC; c++) {
+        const addr = XLSX.utils.encode_cell({r:ri,c});
+        if (!ws[addr]) ws[addr] = {t:'s', v:''};
+        ws[addr].s = {
+          fill:{patternType:'solid',fgColor:{rgb:'1E3A5F'}},
+          font:{name:'맑은 고딕',sz:11,bold:true,color:{rgb:'FFFFFF'}},
+          border:bdr,
+          alignment:{horizontal:'left',vertical:'center'}
+        };
+      }
+      ws['!rows'].push({hpt:22});
+    } else if (meta.type === 'colhdr') {
+      for (let c = 0; c < NC; c++) {
+        const addr = XLSX.utils.encode_cell({r:ri,c});
+        if (!ws[addr]) ws[addr] = {t:'s', v:COL[c]};
+        ws[addr].s = {
+          fill:{patternType:'solid',fgColor:{rgb:'374151'}},
+          font:{name:'맑은 고딕',sz:9,bold:true,color:{rgb:'FFFFFF'}},
+          border:bdr,
+          alignment:{horizontal:c===0||c===3||c===4?'center':'left',vertical:'center'}
+        };
+      }
+      ws['!rows'].push({hpt:18});
+    } else if (meta.type === 'data') {
+      const stripe = meta.seq % 2 === 1 ? 'FFFFFF' : 'EFF6FF';
+      const bgRgb = meta.bg ? toRgb(meta.bg) : stripe;
+      const fontRgb = meta.fnt ? toRgb(meta.fnt) : '111111';
+      for (let c = 0; c < NC; c++) {
+        const addr = XLSX.utils.encode_cell({r:ri,c});
+        if (!ws[addr]) ws[addr] = {t:'s', v:''};
+        ws[addr].s = {
+          fill:{patternType:'solid',fgColor:{rgb:bgRgb}},
+          font:{...BF,color:{rgb:fontRgb}},
+          border:bdr,
+          alignment:{horizontal:c===0||c===3||c===4?'center':'left',vertical:'top',wrapText:c===1||c===2||c===5||c===6}
+        };
+      }
+      ws['!rows'].push({hpt:18});
+    } else {
+      ws['!rows'].push({hpt:5});
     }
   });
-  XLSX.utils.book_append_sheet(wb, ws1, label.slice(0,31));
+
+  if (merges.length) ws['!merges'] = merges;
+  ws['!pageSetup'] = {paperSize:9, orientation:'portrait', fitToPage:true, fitToWidth:1, fitToHeight:0};
+  ws['!margins'] = {left:0.5, right:0.5, top:0.7, bottom:0.7, header:0.3, footer:0.3};
+  if (rowBreaks.length) ws['!rowBreaks'] = rowBreaks;
+
+  XLSX.utils.book_append_sheet(wb, ws, label.slice(0,31));
   XLSX.writeFile(wb, `배송플랜_${dlDate}_${label}.xlsx`, {cellStyles: true});
 }
 

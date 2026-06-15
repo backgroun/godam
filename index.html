@@ -2021,14 +2021,31 @@ function renderResults(cfg){
   renderStats();
 }
 
+function getActiveRows() {
+  const active = document.querySelector('.tab-panel.active');
+  if (active && tabMeta.has(active.id)) {
+    const tid = active.id;
+    const { rows } = tabMeta.get(tid);
+    const term = ($('search-inp')?.value || '').trim().toLowerCase();
+    let filtered = term ? rows.filter(o =>
+      o.거래처명.toLowerCase().includes(term) ||
+      String(o.품목명||'').toLowerCase().includes(term)) : rows;
+    return applyTabFilter(filtered, tid);
+  }
+  const is2ch = o => (String(o.거래처명||'')+String(o.품목명||'')).includes('2차');
+  return [...plan, ...specialPlan, ...secondaryPlan].sort((a,b) =>
+    (is2ch(a)?0:1)-(is2ch(b)?0:1) || (a._rowIdx||0)-(b._rowIdx||0));
+}
+function getActiveTabLabel() {
+  const btn = document.querySelector('.tab-btn.active');
+  return btn ? btn.textContent.replace(/\s*\(\d+\)\s*$/, '').trim() : '전체';
+}
+
 function dlExcel(){
   if (!plan) return;
   const wb = XLSX.utils.book_new();
-
-  // ── 전체리스트 (현재 화면과 동일 서식) ─────────────
-  const is2ch = o => (String(o.거래처명||'')+String(o.품목명||'')).includes('2차');
-  const fullList = [...plan, ...specialPlan, ...secondaryPlan].sort((a,b) =>
-    (is2ch(a)?0:1)-(is2ch(b)?0:1) || (a._rowIdx||0)-(b._rowIdx||0));
+  const fullList = getActiveRows();
+  const label = getActiveTabLabel();
 
   const hdr = ['#','거래처명','품목명','수량','구분','비고','배송주소'];
   const rows = [hdr];
@@ -2064,8 +2081,8 @@ function dlExcel(){
       ws1[addr].s = s;
     }
   });
-  XLSX.utils.book_append_sheet(wb, ws1, '전체리스트');
-  XLSX.writeFile(wb, `배송플랜_${dlDate}.xlsx`, {cellStyles: true});
+  XLSX.utils.book_append_sheet(wb, ws1, label.slice(0,31));
+  XLSX.writeFile(wb, `배송플랜_${dlDate}_${label}.xlsx`, {cellStyles: true});
 }
 
 // ── 모바일 공유 링크 ─────────────────────────────────────
@@ -2128,9 +2145,8 @@ document.addEventListener('click', e => {
 // ── 인쇄용 HTML 저장 ────────────────────────────────────
 function dlPrintHTML() {
   if (!plan) return;
-  const is2ch = o => (String(o.거래처명||'')+String(o.품목명||'')).includes('2차');
-  const fullList = [...plan, ...specialPlan, ...secondaryPlan].sort((a,b) =>
-    (is2ch(a)?0:1)-(is2ch(b)?0:1) || (a._rowIdx||0)-(b._rowIdx||0));
+  const fullList = getActiveRows();
+  const label = getActiveTabLabel();
 
   const th = (txt, extra='') =>
     `<th style="padding:8px 9px;border:1px solid #bbb;background:#f3f4f6;white-space:nowrap;-webkit-print-color-adjust:exact;print-color-adjust:exact;${extra}">${txt}</th>`;
@@ -2165,7 +2181,7 @@ function dlPrintHTML() {
 
   const totalCust = map.size;
   const html = `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8">
-    <title>배송플랜 ${dlDate}</title>
+    <title>${label} ${dlDate}</title>
     <style>
       *{box-sizing:border-box}
       body{font-family:'맑은 고딕','Apple SD Gothic Neo',sans-serif;color:#000;font-size:14px;margin:0;padding:14px}
@@ -2173,7 +2189,7 @@ function dlPrintHTML() {
       @media print{@page{size:A4;margin:12mm}body{padding:0}.no-print{display:none!important}}
     </style></head><body>
     <div class="no-print" style="margin-bottom:12px;padding:10px 14px;background:#f3f4f6;border-radius:7px;display:flex;gap:12px;align-items:center">
-      <strong style="font-size:15px">배송플랜 ${dlDate}</strong>
+      <strong style="font-size:15px">${label} ${dlDate}</strong>
       <span style="color:#666">총 ${totalCust}거래처 · ${fullList.length}건</span>
       <button onclick="window.print()" style="margin-left:auto;padding:7px 18px;background:#1e293b;color:#fff;border:none;border-radius:5px;cursor:pointer;font-size:14px;font-weight:700">🖨 인쇄</button>
     </div>
@@ -2192,7 +2208,7 @@ function dlPrintHTML() {
   const blob = new Blob([html], {type:'text/html;charset=utf-8'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `배송플랜_${dlDate}.html`;
+  a.download = `배송플랜_${dlDate}_${label}.html`;
   a.click();
   showToast('인쇄용 파일이 저장되었습니다.');
 }

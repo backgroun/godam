@@ -91,10 +91,10 @@ input[type=file]{display:none}
 .tab-btn:hover{color:#ddd;background:#222}
 .tab-btn.active{color:#fff;border-color:#666;margin-bottom:-1px;z-index:1;position:relative}
 .tab-panel{background:#fff;border:1px solid #d1d5db;border-radius:0 10px 10px 10px;padding:0;margin-bottom:16px;display:none;overflow:hidden}
-.tab-panel.active{display:block;overflow-y:auto;max-height:calc(100vh - 54px)}
+.tab-panel.active{display:block}
 /* TABLE */
 .ptbl{width:100%;border-collapse:separate;border-spacing:0;font-size:15px}
-.ptbl thead{position:sticky;top:0;z-index:10}
+.ptbl thead{position:sticky;top:40px;z-index:10}
 .ptbl th{background:#141414;color:#e0e0e0;padding:11px 12px;font-weight:700;white-space:nowrap;text-align:left;border-bottom:2px solid #383838;border-right:1px solid #2e2e2e}
 .ptbl th:last-child{border-right:none}
 .ptbl td{padding:10px 11px;border-bottom:none;vertical-align:top;word-break:break-word;overflow-wrap:break-word;color:#d8d8d8;border-right:1px solid #2e2e2e}
@@ -178,7 +178,7 @@ button:not(:disabled):active{transform:scale(0.95)!important;transition:transfor
   .mob-nav-btn.active{color:#fff;border-bottom-color:#fff}
   .mob-upload-section{transition:.15s}
   .tabs{top:46px}
-  .tab-panel.active{max-height:calc(100vh - 100px)}
+  .tab-panel.active{max-height:none}
   /* 모바일 리스트: 읽기 전용 (담당기사·배정변경·주소 숨김, 수평 스크롤) */
   .mob-hide{display:none!important}
   .ptbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -4px}

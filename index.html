@@ -1089,7 +1089,11 @@ function genFilterBar(rows, filteredRows, tid, isAll, showDrv) {
   const badge = filteredRows.length < rows.length
     ? `<span class="flt-badge">${filteredRows.length}/${rows.length}건</span>` : '';
   const addrBtn = `<button class="filter-chip addr-toggle-btn${addrHidden?' flt-active':''}" onclick="toggleAddressCol()">${addrHidden?'주소 보기':'주소 숨기기'}</button>`;
-  return `<div class="filter-bar">${chips}${reset}${badge}${addrBtn}</div>`;
+  const drv = tabMeta.get(tid)?.drv || null;
+  const esc = s => s.replace(/'/g,"\\'");
+  const mapBtn  = `<button class="filter-chip" onclick="${drv?`openMapView('${esc(drv)}')`:'openMapView()'}">🗺 지도</button>`;
+  const capBtn  = `<button class="filter-chip" onclick="${drv?`openShareCard('${esc(drv)}')`:'downloadAllCards()'}">📷 캡쳐</button>`;
+  return `<div class="filter-bar">${chips}${reset}${badge}${addrBtn}${mapBtn}${capBtn}</div>`;
 }
 function openFilterPopup(tid, col, evt) {
   evt.stopPropagation();
@@ -1943,10 +1947,7 @@ function renderResults(cfg){
     div.innerHTML = `<div class="drv" data-cnt="${customers}">${h(drv)}</div>
       <div class="big">${customers}</div>
       ${d ? `<div class="zns">${d.zones.join(' · ')}</div>` : ''}
-      <div class="sc-btns">
-        <button class="share-btn" onclick="event.stopPropagation();openMapView('${h(drv)}')">🗺<span class="mob-hide"> 지도</span></button>
-        <button class="share-btn" onclick="event.stopPropagation();openShareCard('${h(drv)}')">📷<span class="mob-hide"> 캡쳐</span></button>
-      </div>`;
+      `;
     sg.appendChild(div);
   });
 
@@ -2003,7 +2004,7 @@ function renderResults(cfg){
 
     const sorted = [...sub].sort((a,b)=>a.구역.localeCompare(b.구역)||(a.배송주소||'').localeCompare(b.배송주소||'')||a.거래처명.localeCompare(b.거래처명));
     panel.innerHTML = makePanelHTML(sorted, false, true, !addrHidden, true, false, sid);
-    tabMeta.set(sid, { rows: sorted, showDrv: false, showReassign: true });
+    tabMeta.set(sid, { rows: sorted, showDrv: false, showReassign: true, drv });
     tp.appendChild(panel);
   });
 

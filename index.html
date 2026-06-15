@@ -63,13 +63,14 @@ input[type=file]{display:none}
 .save-drv-btn{padding:8px 20px;background:#fff;color:#000;border:none;border-radius:7px;cursor:pointer;font-size:14px;font-weight:700;transition:.15s}
 .save-drv-btn:hover{background:#e0e0e0}
 .zones-ref{font-size:12px;color:#777;margin-top:10px;line-height:1.8}
-/* GENERATE */
-.act-btns{display:flex;gap:8px;margin-bottom:20px}
-.gen-btn{flex:2;display:block;padding:14px 10px;border:none;border-radius:12px;font-size:16px;font-weight:800;cursor:pointer;transition:.15s;letter-spacing:-.3px}
+/* GENERATE / MAIN ACTION BAR */
+.main-actions{display:flex;gap:8px;align-items:center;margin-bottom:16px;flex-wrap:wrap}
+.main-search{display:flex;gap:6px;flex:1 1 220px;min-width:0}
+.gen-btn{flex:0 0 auto;padding:12px 16px;border:none;border-radius:12px;font-size:14px;font-weight:800;cursor:pointer;transition:.15s;letter-spacing:-.3px;white-space:nowrap}
 .gen-btn:not(:disabled){background:#fff;color:#000}
 .gen-btn:not(:disabled):hover{background:#efefef;transform:translateY(-1px);box-shadow:0 6px 24px rgba(255,255,255,.15)}
 .gen-btn:disabled{background:#1a1a1a;color:#666;cursor:not-allowed;border:1px solid #2a2a2a}
-.action-btn{flex:1;padding:14px 8px;border:1px solid #333;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;background:#1a1a1a;color:#bbb;transition:.15s;letter-spacing:-.3px;white-space:nowrap}
+.action-btn{flex:0 0 auto;padding:12px 14px;border:1px solid #333;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;background:#1a1a1a;color:#bbb;transition:.15s;letter-spacing:-.3px;white-space:nowrap}
 .action-btn:hover{background:#262626;color:#fff;border-color:#555}
 /* RESULTS */
 .sum-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:8px;margin-bottom:16px}
@@ -194,7 +195,7 @@ button:not(:disabled):active{transform:scale(0.95)!important;transition:transfor
 /* PRINT */
 @media print{
   body{background:#fff;color:#000}
-  .upload-card,.settings-card,.gen-btn,.actions,.tabs,.hdr .sub{display:none!important}
+  .upload-card,.settings-card,.main-actions,.actions,.tabs,.hdr .sub{display:none!important}
   .tab-panel{display:block!important;page-break-before:always;border:none;padding:0}
   .tab-panel:first-of-type{page-break-before:avoid}
   .ptbl th{-webkit-print-color-adjust:exact;print-color-adjust:exact;background:#000!important;color:#fff!important}
@@ -212,8 +213,9 @@ button:not(:disabled):active{transform:scale(0.95)!important;transition:transfor
   .upload-card{padding:10px 12px}
   .uprow{grid-template-columns:1fr;gap:8px}
   .up-arr{display:none}
-  .action-btn{font-size:12px;padding:11px 6px}
-  .gen-btn{font-size:14px;padding:12px}
+  .action-btn{font-size:12px;padding:10px 8px}
+  .gen-btn{font-size:13px;padding:10px 12px}
+  .main-search{flex:1 1 100%}
   /* 기사 카드: 1열 한 줄 */
   .sum-grid{grid-template-columns:1fr;gap:4px}
   .sc{flex-direction:row;align-items:center;padding:8px 12px;border-radius:10px;min-height:44px}
@@ -223,9 +225,7 @@ button:not(:disabled):active{transform:scale(0.95)!important;transition:transfor
   .sc .zns{display:none}
   .sc-btns{gap:4px;margin-top:0;padding-top:0;margin-left:8px}
   .share-btn{padding:6px 10px;min-height:36px;flex:0;font-size:16px}
-  /* 검색: 한 줄, 주소숨기기 제거 */
-  #search-row{flex-wrap:nowrap;gap:6px}
-  #addr-toggle{display:none!important}
+  .filter-bar .addr-toggle-btn{display:none!important}
   .actions{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-start}
   /* 탭 스크롤 */
   .tabs{flex-wrap:nowrap;overflow-x:auto;gap:3px;padding-bottom:2px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
@@ -241,10 +241,8 @@ button:not(:disabled):active{transform:scale(0.95)!important;transition:transfor
   .cust{font-size:13px}
   .note{font-size:12px}
   .zchip{font-size:11px;padding:2px 6px}
-  #search-row{flex-wrap:nowrap;gap:6px}
   .search-inp{font-size:15px;padding:11px 12px;flex:1;width:auto;min-width:0}
   .search-btn{padding:11px 16px;font-size:14px;min-height:44px;flex-shrink:0}
-  .addr-toggle-btn{display:none!important}
   .actions .abtn{padding:10px 8px;font-size:13px;text-align:center;min-height:44px;flex:1 1 calc(33% - 4px)}
   .dtbl{font-size:13px}
   .dtbl th,.dtbl td{padding:7px 8px}
@@ -423,24 +421,23 @@ button:not(:disabled):active{transform:scale(0.95)!important;transition:transfor
   </div>
 </div>
 
-<!-- GENERATE -->
-<div class="act-btns" id="gen-section">
+<!-- MAIN ACTION BAR -->
+<div class="main-actions" id="main-actions">
   <button class="gen-btn" id="gen-btn" disabled onclick="generate()">🗺 배송플랜 생성</button>
-  <button class="action-btn" onclick="openModal('drv-modal')">⚙️ 기사 정보 변경</button>
-  <button class="action-btn" onclick="openMasterModal()">📋 거래처 전체 목록</button>
-</div>
-
-<!-- RESULTS -->
-<div id="results" style="display:none">
-  <div class="sum-grid" id="sum-grid"></div>
-  <div id="search-row" style="display:none">
+  <button class="action-btn" onclick="openModal('drv-modal')">⚙️ 기사정보변경</button>
+  <button class="action-btn" onclick="openMasterModal()">📋 거래처목록</button>
+  <div class="main-search">
     <input type="text" id="search-inp" class="search-inp" placeholder="🔍  거래처명 / 품목명 검색..."
       oninput="if(!searchComposing)filterSearch()"
       oncompositionstart="searchComposing=true"
       oncompositionend="searchComposing=false;filterSearch()">
     <button class="search-btn" onclick="filterSearch()">검색</button>
-    <button id="addr-toggle" class="addr-toggle-btn active" onclick="toggleAddressCol()">주소 보기</button>
   </div>
+</div>
+
+<!-- RESULTS -->
+<div id="results" style="display:none">
+  <div class="sum-grid" id="sum-grid"></div>
   <div class="actions">
     <button class="abtn share-act-btn" onclick="shareLink()" style="background:#0369a1;color:#fff">📱 공유</button>
     <button class="abtn map-btn" onclick="openMapView()">🗺 전체지도</button>
@@ -1091,7 +1088,8 @@ function genFilterBar(rows, filteredRows, tid, isAll, showDrv) {
   const reset = anyActive ? `<button class="filter-chip flt-reset" onclick="resetTabFilter('${tid}')">✕ 초기화</button>` : '';
   const badge = filteredRows.length < rows.length
     ? `<span class="flt-badge">${filteredRows.length}/${rows.length}건</span>` : '';
-  return `<div class="filter-bar">${chips}${reset}${badge}</div>`;
+  const addrBtn = `<button class="filter-chip addr-toggle-btn${addrHidden?' flt-active':''}" onclick="toggleAddressCol()">${addrHidden?'주소 보기':'주소 숨기기'}</button>`;
+  return `<div class="filter-bar">${chips}${reset}${badge}${addrBtn}</div>`;
 }
 function openFilterPopup(tid, col, evt) {
   evt.stopPropagation();
@@ -1194,9 +1192,10 @@ function openAddrSearch(cell) {
 
 function toggleAddressCol() {
   addrHidden = !addrHidden;
-  const btn = $('addr-toggle');
-  btn.textContent = addrHidden ? '주소 보기' : '주소 숨기기';
-  btn.classList.toggle('active', addrHidden);
+  document.querySelectorAll('.addr-toggle-btn').forEach(btn => {
+    btn.textContent = addrHidden ? '주소 보기' : '주소 숨기기';
+    btn.classList.toggle('flt-active', addrHidden);
+  });
   document.querySelectorAll('.tab-panel').forEach(p => {
     if (!tabMeta.has(p.id)) return;
     const { rows, showDrv, showReassign, allowAddrAdd = true, isAll = false } = tabMeta.get(p.id);
@@ -1928,7 +1927,6 @@ function renderResults(cfg){
   sg.innerHTML = tabs.innerHTML = tp.innerHTML = '';
   tabMeta.clear();
   $('search-inp').value = '';
-  $('search-row').style.display = 'flex';
 
   const allDrvs = [...new Set([...cfg.map(d=>d.name), '택배', '미배정'])];
 

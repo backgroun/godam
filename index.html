@@ -1602,9 +1602,18 @@ function addRow(name='', zones=''){
 }
 
 function getDriverCfg(){
+  const validZones = Object.keys(ZONES);
   return Array.from($('drv-tbody').rows).map(tr => {
     const [n,z] = tr.querySelectorAll('input');
-    return { name: n.value.trim(), zones: z.value.split(',').map(s=>s.trim()).filter(Boolean) };
+    const zones = z.value.split(',').map(s => {
+      const t = s.trim();
+      if (!t) return null;
+      if (validZones.includes(t)) return t;
+      // 권 오탈자 자동 수정: '경기동북' → '경기동북권'
+      const matched = validZones.find(vz => vz.replace(/권$/, '') === t.replace(/권$/, ''));
+      return matched || t;
+    }).filter(Boolean);
+    return { name: n.value.trim(), zones };
   }).filter(d => d.name);
 }
 

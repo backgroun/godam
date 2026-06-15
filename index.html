@@ -178,6 +178,13 @@ input[type=file]{display:none}
 button:not(:disabled):active{transform:scale(0.95)!important;transition:transform .06s!important}
 /* TOAST */
 .toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);padding:11px 22px;border-radius:10px;font-weight:700;font-size:14px;z-index:9999;pointer-events:none;opacity:0;transition:opacity .18s;white-space:nowrap;box-shadow:0 4px 18px rgba(0,0,0,.5)}
+/* SCROLL TOP/BOTTOM FAB */
+.scroll-fab{position:fixed;right:14px;width:34px;height:34px;border-radius:50%;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;color:#ccc;background:#1e1e1e;box-shadow:0 3px 0 #0a0a0a,0 4px 10px rgba(0,0,0,.5);transition:transform .1s,box-shadow .1s,opacity .2s;z-index:990;opacity:0;pointer-events:none}
+.scroll-fab.vis{opacity:1;pointer-events:auto}
+.scroll-fab:hover{color:#fff;background:#2a2a2a;transform:translateY(1px);box-shadow:0 2px 0 #0a0a0a,0 3px 6px rgba(0,0,0,.5)}
+.scroll-fab:active{transform:translateY(3px);box-shadow:none}
+#fab-top{bottom:80px}
+#fab-bot{bottom:36px}
 /* MOBILE TABS */
 .mob-nav{display:none}
 @media(max-width:768px){
@@ -2323,6 +2330,21 @@ function mobSwitch(tab) {
 function initMobNav() {
   if (window.innerWidth <= 768) mobSwitch('list');
 }
+
+(function(){
+  document.body.insertAdjacentHTML('beforeend',
+    '<button id="fab-top" class="scroll-fab" onclick="window.scrollTo({top:0,behavior:\'smooth\'})">▲</button>' +
+    '<button id="fab-bot" class="scroll-fab" onclick="window.scrollTo({top:document.body.scrollHeight,behavior:\'smooth\'})">▼</button>'
+  );
+  function upd(){
+    const top = window.scrollY > 120;
+    const bot = window.scrollY < document.body.scrollHeight - window.innerHeight - 120;
+    document.getElementById('fab-top').classList.toggle('vis', top);
+    document.getElementById('fab-bot').classList.toggle('vis', bot);
+  }
+  window.addEventListener('scroll', upd, {passive:true});
+  upd();
+})();
 </script>
 </body>
 </html>

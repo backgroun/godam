@@ -1897,9 +1897,10 @@ function renderResults(cfg){
     const div = document.createElement('div');
     div.className = `sc ${clr}`;
     div.innerHTML = `<div class="drv" data-cnt="${customers}">${h(stripTitle(drv))}</div>
-      ${d ? `<div class="zns">${d.zones.join(' · ')}</div>` : ''}
-      <div class="big">${customers}</div>
-      `;
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:4px;margin-top:2px">
+        ${d ? `<div class="zns" style="margin-top:0;min-width:0">${d.zones.join(' · ')}</div>` : '<div></div>'}
+        <div class="big" style="flex-shrink:0">${customers}</div>
+      </div>`;
     div.onclick = () => { document.querySelector(`.tab-btn[data-panel="${sid}"]`)?.click(); $('tabs').scrollIntoView({behavior:'smooth',block:'start'}); };
     sg.appendChild(div);
   });
